@@ -31,13 +31,6 @@ extern "C" {
 #undef LOG_TAG
 #define LOG_TAG "NET_CONFIG"
 
-#define __PRT(level, format, arg...) \
-	do { \
-		char *ch = strrchr(__FILE__, '/'); \
-		ch = ch ? ch + 1 : __FILE__; \
-		fprintf(stderr, PACKAGE": %s:%s() "format"\n", ch, __FUNCTION__, ## arg); \
-	} while(0)
-
 #define DBG(format, arg...)		LOGD(format, ## arg)
 #define INFO(format, arg...)		LOGI(format, ## arg)
 #define WARN(format, arg...)		LOGW(format, ## arg)
