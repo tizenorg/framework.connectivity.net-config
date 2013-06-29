@@ -124,7 +124,7 @@ static void netconfig_network_statistics_class_init(NetconfigNetworkStatisticsCl
 }
 
 
-static gboolean __netconfig_wifi_get_bytes_statistics(guint64 *tx, guint64 *rx)
+gboolean netconfig_wifi_get_bytes_statistics(guint64 *tx, guint64 *rx)
 {
 	gboolean ret = FALSE;
 	FILE *fp;
@@ -205,7 +205,7 @@ gboolean netconfig_iface_network_statistics_get_wifi_total_tx_bytes(NetconfigNet
 	vconf_get_int(VCONFKEY_NETWORK_WIFI_PKT_TOTAL_SNT, &val);
 	tx_bytes = (guint64)val;
 
-	if (__netconfig_wifi_get_bytes_statistics(&tx, &rx) == TRUE)
+	if (netconfig_wifi_get_bytes_statistics(&tx, &rx) == TRUE)
 		*total_bytes = (guint64)tx + (guint64)tx_bytes;
 	else
 		*total_bytes = (guint64)tx_bytes;
@@ -222,7 +222,7 @@ gboolean netconfig_iface_network_statistics_get_wifi_total_rx_bytes(NetconfigNet
 	vconf_get_int(VCONFKEY_NETWORK_WIFI_PKT_TOTAL_RCV, &val);
 	rx_bytes = (guint64)val;
 
-	if (__netconfig_wifi_get_bytes_statistics(&tx, &rx) == TRUE)
+	if (netconfig_wifi_get_bytes_statistics(&tx, &rx) == TRUE)
 		*total_bytes = (guint64)rx + (guint64)rx_bytes;
 	else
 		*total_bytes = (guint64)rx_bytes;
@@ -244,7 +244,7 @@ gboolean netconfig_iface_network_statistics_get_wifi_last_tx_bytes(NetconfigNetw
 		return TRUE;
 	}
 
-	if (__netconfig_wifi_get_bytes_statistics(&tx, &rx) == TRUE)
+	if (netconfig_wifi_get_bytes_statistics(&tx, &rx) == TRUE)
 		*last_bytes = (((guint64)tx - (guint64)tx_bytes) > (guint64)0) ?
 				((guint64)tx - (guint64)tx_bytes) : (guint64)0;
 	else
@@ -267,7 +267,7 @@ gboolean netconfig_iface_network_statistics_get_wifi_last_rx_bytes(NetconfigNetw
 		return TRUE;
 	}
 
-	if (__netconfig_wifi_get_bytes_statistics(&tx, &rx) == TRUE)
+	if (netconfig_wifi_get_bytes_statistics(&tx, &rx) == TRUE)
 		*last_bytes = (((guint64)rx - (guint64)rx_bytes) > (guint64)0) ?
 				((guint64)rx - (guint64)rx_bytes) : (guint64)0;
 	else
@@ -304,7 +304,7 @@ gboolean netconfig_iface_network_statistics_reset_wifi_total_tx_bytes(NetconfigN
 {
 	guint64 tx = 0, rx = 0;
 
-	if (__netconfig_wifi_get_bytes_statistics(&tx, &rx) == TRUE)
+	if (netconfig_wifi_get_bytes_statistics(&tx, &rx) == TRUE)
 		vconf_set_int(VCONFKEY_NETWORK_WIFI_PKT_TOTAL_SNT, -(int)tx);
 	else
 		vconf_set_int(VCONFKEY_NETWORK_WIFI_PKT_TOTAL_SNT, 0);
@@ -316,7 +316,7 @@ gboolean netconfig_iface_network_statistics_reset_wifi_total_rx_bytes(NetconfigN
 {
 	guint64 tx = 0, rx = 0;
 
-	if (__netconfig_wifi_get_bytes_statistics(&tx, &rx) == TRUE)
+	if (netconfig_wifi_get_bytes_statistics(&tx, &rx) == TRUE)
 		vconf_set_int(VCONFKEY_NETWORK_WIFI_PKT_TOTAL_RCV, -(int)rx);
 	else
 		vconf_set_int(VCONFKEY_NETWORK_WIFI_PKT_TOTAL_RCV, 0);
@@ -333,7 +333,7 @@ gboolean netconfig_iface_network_statistics_reset_wifi_last_tx_bytes(NetconfigNe
 		return TRUE;
 	}
 
-	if (__netconfig_wifi_get_bytes_statistics(&tx, &rx) == TRUE)
+	if (netconfig_wifi_get_bytes_statistics(&tx, &rx) == TRUE)
 		vconf_set_int(VCONFKEY_NETWORK_WIFI_PKT_LAST_SNT, (int)tx);
 	else
 		vconf_set_int(VCONFKEY_NETWORK_WIFI_PKT_LAST_SNT, 0);
@@ -350,7 +350,7 @@ gboolean netconfig_iface_network_statistics_reset_wifi_last_rx_bytes(NetconfigNe
 		return TRUE;
 	}
 
-	if (__netconfig_wifi_get_bytes_statistics(&tx, &rx) == TRUE)
+	if (netconfig_wifi_get_bytes_statistics(&tx, &rx) == TRUE)
 		vconf_set_int(VCONFKEY_NETWORK_WIFI_PKT_LAST_RCV, (int)rx);
 	else
 		vconf_set_int(VCONFKEY_NETWORK_WIFI_PKT_LAST_RCV, 0);
@@ -365,7 +365,7 @@ void netconfig_wifi_statistics_update_powered_off(void)
 	guint64 total_tx = 0, total_rx = 0;
 	int val = 0;
 
-	if (__netconfig_wifi_get_bytes_statistics(&cur_tx, &cur_rx) != TRUE)
+	if (netconfig_wifi_get_bytes_statistics(&cur_tx, &cur_rx) != TRUE)
 		return;
 
 	vconf_get_int(VCONFKEY_NETWORK_WIFI_PKT_TOTAL_SNT, &val);
@@ -397,7 +397,7 @@ static void netconfig_wifi_statistics_update_state(
 		return;
 	}
 
-	if (__netconfig_wifi_get_bytes_statistics(&tx, &rx) != TRUE)
+	if (netconfig_wifi_get_bytes_statistics(&tx, &rx) != TRUE)
 		return;
 
 	if (state == NETCONFIG_WIFI_CONNECTED) {

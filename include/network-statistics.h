@@ -62,6 +62,7 @@ gboolean netconfig_iface_network_statistics_reset_wifi_total_rx_bytes(NetconfigN
 gboolean netconfig_iface_network_statistics_reset_wifi_last_tx_bytes(NetconfigNetworkStatistics *network_statistics, GError **error);
 gboolean netconfig_iface_network_statistics_reset_wifi_last_rx_bytes(NetconfigNetworkStatistics *network_statistics, GError **error);
 
+gboolean netconfig_wifi_get_bytes_statistics(guint64 *tx, guint64 *rx);
 void netconfig_wifi_statistics_update_powered_off(void);
 
 G_END_DECLS

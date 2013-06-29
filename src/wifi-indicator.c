@@ -29,12 +29,16 @@
 #include "log.h"
 #include "util.h"
 #include "netdbus.h"
+#include "network-statistics.h"
 #include "netsupplicant.h"
 #include "wifi-indicator.h"
 
 #define VCONFKEY_WIFI_SNR_MIN	-89
 
-#define NETCONFIG_WIFI_INDICATOR_INTERVAL	3
+#define NETCONFIG_WIFI_INDICATOR_INTERVAL	1
+
+static guint64 netconfig_wifi_tx_bytes = 0;
+static guint64 netconfig_wifi_rx_bytes = 0;
 
 static guint netconfig_wifi_indicator_timer = 0;
 
@@ -219,6 +223,7 @@ static gboolean __netconfig_wifi_indicator_monitor(gpointer data)
 {
 	int rssi_dbm = 0;
 	int pm_state = VCONFKEY_PM_STATE_NORMAL;
+	guint64 tx = 0, rx = 0;
 
 	/* In case of LCD off, we don't need to update Wi-Fi indicator */
 	vconf_get_int(VCONFKEY_PM_STATE, &pm_state);
@@ -227,6 +232,23 @@ static gboolean __netconfig_wifi_indicator_monitor(gpointer data)
 
 	rssi_dbm = netconfig_wifi_get_rssi();
 
+	if (netconfig_wifi_get_bytes_statistics(&tx, &rx) == TRUE) {
+		if (netconfig_wifi_tx_bytes < tx) {
+			if (netconfig_wifi_rx_bytes < rx)
+				vconf_set_int(VCONFKEY_WIFI_TRANSFER_STATE, VCONFKEY_WIFI_TRANSFER_STATE_TXRX);
+			else
+				vconf_set_int(VCONFKEY_WIFI_TRANSFER_STATE, VCONFKEY_WIFI_TRANSFER_STATE_TX);
+		} else {
+			if (netconfig_wifi_rx_bytes < rx)
+				vconf_set_int(VCONFKEY_WIFI_TRANSFER_STATE, VCONFKEY_WIFI_TRANSFER_STATE_RX);
+			else
+				vconf_set_int(VCONFKEY_WIFI_TRANSFER_STATE, VCONFKEY_WIFI_TRANSFER_STATE_NONE);
+		}
+
+		netconfig_wifi_tx_bytes = tx;
+		netconfig_wifi_rx_bytes = rx;
+	}
+
 	__netconfig_wifi_set_rssi_level(rssi_dbm);
 
 	return TRUE;
@@ -234,9 +256,19 @@ static gboolean __netconfig_wifi_indicator_monitor(gpointer data)
 
 void netconfig_wifi_indicator_start(void)
 {
+	guint64 tx = 0, rx = 0;
+
 	INFO("Start Wi-Fi indicator");
 
 	vconf_set_int(VCONFKEY_WIFI_STRENGTH, VCONFKEY_WIFI_STRENGTH_MAX);
+
+	if (netconfig_wifi_get_bytes_statistics(&tx, &rx) == TRUE) {
+		netconfig_wifi_tx_bytes = tx;
+		netconfig_wifi_rx_bytes = rx;
+	} else {
+		netconfig_wifi_tx_bytes = 0;
+		netconfig_wifi_rx_bytes = 0;
+	}
 
 	netconfig_start_timer_seconds(
 			NETCONFIG_WIFI_INDICATOR_INTERVAL,
