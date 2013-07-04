@@ -1,6 +1,6 @@
 Name:       net-config
 Summary:    TIZEN Network Configuration Module
-Version:    0.1.90_22
+Version:    0.1.90_23
 Release:    1
 Group:      System/Network
 License:    Apache License Version 2.0
@@ -59,6 +59,10 @@ ln -s ../net-config.service %{buildroot}%{_libdir}/systemd/system/network.target
 mkdir -p %{buildroot}%{_datadir}/license
 cp LICENSE.APLv2 %{buildroot}%{_datadir}/license/net-config
 
+#Rule file
+mkdir -p %{buildroot}/opt/etc/smack/accesses.d
+cp net-config.rule %{buildroot}/opt/etc/smack/accesses.d
+
 %post
 
 vconftool set -t int memory/dnet/state 0 -i
@@ -108,6 +112,7 @@ fi
 
 %files
 %manifest net-config.manifest
+/opt/etc/smack/accesses.d/net-config.rule
 %{_sbindir}/*
 %attr(644,root,root) /opt/etc/resolv.conf
 %{_datadir}/dbus-1/services/*

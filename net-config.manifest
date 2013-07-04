@@ -1,14 +1,6 @@
 <manifest>
 	<define>
 		<domain name="net-config"/>
-		<request>
-			<smack request="dbus" type="rwx"/>
-			<smack request="system::use_internet" type="rwx"/>
-		</request>
-		<permit>
-			<smack permit="dbus" type="rwx"/>
-			<smack permit="system::use_internet" type="rwx"/>
-		</permit>
 	</define>
 	<assign>
 		<filesystem path="/etc/rc.d/init.d/net-config" label="_" exec_label="none"/>
