@@ -26,20 +26,6 @@ extern "C" {
 
 #include "wifi.h"
 
-#define NETCONFIG_AGENT_FIELD_NAME "Name"
-#define NETCONFIG_AGENT_FIELD_PASSPHRASE "Passphrase"
-#define NETCONFIG_AGENT_FIELD_IDENTITY "Identity"
-
-typedef struct {
-	char *name;
-	char *ssid;
-	char *identity;
-	char *passphrase;
-	char *wpspin;
-	char *username;
-	char *password;
-} NetconfigWifiAgentFields;
-
 gboolean netconfig_agent_register(void);
 gboolean netconfig_agent_unregister(void);
 gboolean netconfig_iface_wifi_set_field(NetconfigWifi *wifi,

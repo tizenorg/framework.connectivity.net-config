@@ -25,15 +25,29 @@
 #include "wifi.h"
 #include "netdbus.h"
 
-static NetconfigWifiAgentFields agent;
+#define NETCONFIG_AGENT_FIELD_PASSPHRASE		"Passphrase"
+#define NETCONFIG_AGENT_FIELD_WPS				"WPS"
+#define NETCONFIG_AGENT_FIELD_WPS_PBC			"WPS_PBC"
+#define NETCONFIG_AGENT_FIELD_WPS_PIN			"WPS_PIN"
 
-static void _netconfig_agent_clear_fields(void)
+struct netconfig_wifi_agent {
+	char *passphrase;
+	char *wps_pin;
+	gboolean wps_pbc;
+};
+
+static struct netconfig_wifi_agent agent;
+
+static void __netconfig_agent_clear_fields(void)
 {
-	DBG("_netconfig_agent_clear_fields");
+	DBG("__netconfig_agent_clear_fields");
 
 	g_free(agent.passphrase);
-	g_free(agent.name);
-	g_free(agent.identity);
+	g_free(agent.wps_pin);
+
+	agent.passphrase = NULL;
+	agent.wps_pin = NULL;
+	agent.wps_pbc = FALSE;
 }
 
 gboolean netconfig_agent_register(void)
@@ -84,7 +98,7 @@ gboolean netconfig_agent_unregister(void)
 	dbus_message_unref(reply);
 
 	/* Clearing the agent fields */
-	_netconfig_agent_clear_fields();
+	__netconfig_agent_clear_fields();
 
 	return TRUE;
 }
@@ -92,45 +106,36 @@ gboolean netconfig_agent_unregister(void)
 gboolean netconfig_iface_wifi_set_field(NetconfigWifi *wifi,
 		GHashTable *fields, GError **error)
 {
-	DBG("netconfig_iface_wifi_set_field");
-	g_return_val_if_fail(wifi != NULL, FALSE);
-
 	GHashTableIter iter;
 	gpointer field, value;
 
+	DBG("Set agent fields");
+
+	g_return_val_if_fail(wifi != NULL, FALSE);
+
+	__netconfig_agent_clear_fields();
+
 	g_hash_table_iter_init(&iter, fields);
+
 	while (g_hash_table_iter_next(&iter, &field, &value)) {
 		DBG("Field - [%s]", field);
-		if (!strcmp(field, NETCONFIG_AGENT_FIELD_PASSPHRASE)) {
-			if (NULL != agent.passphrase) {
-				g_free(agent.passphrase);
-			}
+		if (g_strcmp0(field, NETCONFIG_AGENT_FIELD_PASSPHRASE) == 0) {
+			g_free(agent.passphrase);
+			agent.passphrase = g_strdup(value);
 
-			if (NULL != value) {
-				agent.passphrase = g_strdup(value);
-				DBG("Set the agent field[%s] - [%s]", field,
-						agent.passphrase);
-			}
-		} else if (!strcmp(field, NETCONFIG_AGENT_FIELD_NAME)) {
-			if (NULL != agent.name) {
-				g_free(agent.name);
-			}
+			DBG("Field [%s] - []", field);
+		} else if (g_strcmp0(field, NETCONFIG_AGENT_FIELD_WPS_PBC) == 0) {
+			agent.wps_pbc = FALSE;
+			if (g_strcmp0(value, "enable") == 0)
+				agent.wps_pbc = TRUE;
 
-			if (NULL != value) {
-				agent.name = g_strdup(value);
-				DBG("Set the agent field[%s] - [%s]",
-						field, agent.name);
-			}
-		} else if (!strcmp(field, NETCONFIG_AGENT_FIELD_IDENTITY)) {
-			if (NULL != agent.identity) {
-				g_free(agent.identity);
-			}
+			DBG("Field [%s] - [%d]", field, agent.wps_pbc);
+		} else if (g_strcmp0(field, NETCONFIG_AGENT_FIELD_WPS_PIN) == 0) {
+			g_free(agent.wps_pin);
+			agent.wps_pbc = FALSE;
+			agent.wps_pin = g_strdup(value);
 
-			if (NULL != value) {
-				agent.identity = g_strdup(value);
-				DBG("Set the agent field[%s] - [%s]",
-						field, agent.identity);
-			}
+			DBG("Field [%s] - []", field);
 		}
 	}
 
@@ -141,53 +146,58 @@ gboolean netconfig_iface_wifi_request_input(NetconfigWifi *wifi,
 		gchar *service, GHashTable *fields,
 		DBusGMethodInvocation *context)
 {
-	DBG("netconfig_iface_wifi_request_input");
-
-	g_return_val_if_fail(wifi != NULL, FALSE);
-
 	GHashTableIter iter;
 	gpointer field, value;
 	GHashTable *out_table = NULL;
 	GValue *ret_value = NULL;
 
+	g_return_val_if_fail(wifi != NULL, FALSE);
+
 	if (NULL == service)
 		return FALSE;
 
-	DBG("Service - [%s]", service);
+	DBG("Agent fields requested for service: %s", service);
 
-	out_table = g_hash_table_new_full(g_str_hash, g_str_equal, g_free,
-			g_free);
+	out_table = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, g_free);
 	if (NULL == out_table)
 		return FALSE;
 
 	g_hash_table_iter_init(&iter, fields);
+
 	while (g_hash_table_iter_next(&iter, &field, &value)) {
-		DBG("Field - [%s]", field);
-		if (!strcmp(field, NETCONFIG_AGENT_FIELD_PASSPHRASE)) {
-			DBG("Adding the field-value in table");
+		if (g_strcmp0(field, NETCONFIG_AGENT_FIELD_PASSPHRASE) == 0 &&
+				agent.passphrase != NULL) {
 			ret_value = g_slice_new0(GValue);
+
 			g_value_init(ret_value, G_TYPE_STRING);
 			g_value_set_string(ret_value, agent.passphrase);
-			g_hash_table_insert(out_table, g_strdup(field),
-					ret_value);
-		} else if (!strcmp(field, NETCONFIG_AGENT_FIELD_NAME)) {
-			DBG("Adding the field-value in table");
+			g_hash_table_insert(out_table, g_strdup(field), ret_value);
+
+			DBG("Setting [%s] - []", field);
+		} else if (g_strcmp0(field, NETCONFIG_AGENT_FIELD_WPS) == 0 &&
+				(agent.wps_pbc == TRUE || agent.wps_pin != NULL)) {
 			ret_value = g_slice_new0(GValue);
+
 			g_value_init(ret_value, G_TYPE_STRING);
-			g_value_set_string(ret_value, agent.name);
-			g_hash_table_insert(out_table, g_strdup(field),
-					ret_value);
-		} else if (!strcmp(field, NETCONFIG_AGENT_FIELD_IDENTITY)) {
-			DBG("Adding the field-value in table");
-			ret_value = g_slice_new0(GValue);
-			g_value_init(ret_value, G_TYPE_STRING);
-			g_value_set_string(ret_value, agent.identity);
-			g_hash_table_insert(out_table, g_strdup(field),
-					ret_value);
+
+			if (agent.wps_pbc == TRUE) {
+				/* Sending empty string for WPS push button method */
+				g_value_set_string(ret_value, "");
+
+				DBG("Setting empty string for [%s]", field);
+			} else if (agent.wps_pin != NULL) {
+				g_value_set_string(ret_value, agent.wps_pin);
+
+				DBG("Setting string [%s] - []", field);
+			}
+
+			g_hash_table_insert(out_table, g_strdup(field), ret_value);
 		}
 	}
 
 	dbus_g_method_return(context, out_table);
+
+	__netconfig_agent_clear_fields();
 
 	return TRUE;
 }
