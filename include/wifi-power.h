@@ -26,6 +26,8 @@ extern "C" {
 
 #include <glib.h>
 
+void netconfig_set_power_in_progress(gboolean in_progress);
+void netconfig_check_fm_waiting(void);
 void netconfig_wifi_power_configuration(void);
 
 gboolean netconfig_iface_wifi_load_driver(NetconfigWifi *wifi, GError **error);

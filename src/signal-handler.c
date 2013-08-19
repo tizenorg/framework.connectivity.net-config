@@ -106,6 +106,9 @@ static void __netconfig_technology_signal_handler(DBusMessage *msg)
 				netconfig_wifi_update_power_state(TRUE);
 			else
 				netconfig_wifi_update_power_state(FALSE);
+
+			netconfig_set_power_in_progress(FALSE);
+			netconfig_check_fm_waiting();
 		} else if (g_strcmp0(key, "Connected") == 0) {
 			/* Connection state */
 		} else if (g_strcmp0(key, "Tethering") == 0) {

@@ -42,6 +42,8 @@
 
 #define WLAN_DRIVER_SCRIPT "/usr/bin/wlan.sh"
 
+static gboolean power_in_progress = FALSE;
+static gboolean fm_waiting = FALSE;
 
 static gboolean __netconfig_wifi_enable_technology(void)
 {
@@ -174,13 +176,12 @@ static void __netconfig_wifi_direct_state_cb(int error_code,
 
 	if (device_state == WIFI_DIRECT_DEVICE_STATE_DEACTIVATED) {
 		if (__netconfig_wifi_try_to_load_driver() < 0) {
+			power_in_progress = FALSE;
 
 			/* TODO: error report */
 
 			return;
 		}
-
-		netconfig_wifi_notify_power_completed(TRUE);
 	}
 }
 
@@ -213,9 +214,10 @@ static int __netconfig_wifi_try_to_load_driver(void)
 	}
 
 	if (netconfig_is_wifi_direct_on() == TRUE) {
-		if (__netconfig_wifi_direct_power_off() == TRUE)
+		if (__netconfig_wifi_direct_power_off() == TRUE) {
+			power_in_progress = TRUE;
 			return -EINPROGRESS;
-		else
+		} else
 			return -EBUSY;
 	}
 
@@ -225,7 +227,12 @@ static int __netconfig_wifi_try_to_load_driver(void)
 		return -EIO;
 	}
 
-	__netconfig_wifi_enable_technology();
+	if (__netconfig_wifi_enable_technology() != TRUE) {
+		netconfig_wifi_remove_driver();
+		return -EIO;
+	}
+
+	power_in_progress = TRUE;
 
 	return 0;
 }
@@ -236,7 +243,10 @@ static gboolean __netconfig_wifi_try_to_remove_driver(void)
 
 	netconfig_wifi_statistics_update_powered_off();
 
-	__netconfig_wifi_disable_technology();
+	if (__netconfig_wifi_disable_technology() != TRUE)
+		return FALSE;
+
+	power_in_progress = TRUE;
 
 	return TRUE;
 }
@@ -247,6 +257,13 @@ static void __netconfig_wifi_airplane_mode(keynode_t* node,
 	int value = 0;
 	int wifi_state = 0;
 	static gboolean powered_off_by_flightmode = FALSE;
+
+	if (power_in_progress) {
+		fm_waiting = TRUE;
+		return;
+	}
+
+	fm_waiting = FALSE;
 
 	vconf_get_bool(VCONFKEY_TELEPHONY_FLIGHT_MODE, &value);
 	vconf_get_int(VCONFKEY_WIFI_STATE, &wifi_state);
@@ -317,6 +334,17 @@ static void __netconfig_wifi_pm_state_mode(keynode_t* node,
 	prev_state = value;
 }
 
+void netconfig_set_power_in_progress(gboolean in_progress)
+{
+	power_in_progress = in_progress;
+}
+
+void netconfig_check_fm_waiting(void)
+{
+	if (fm_waiting)
+		__netconfig_wifi_airplane_mode(NULL, NULL);
+}
+
 void netconfig_wifi_power_configuration(void)
 {
 	int wifi_last_power_state = 0;
@@ -350,6 +378,11 @@ gboolean netconfig_iface_wifi_load_driver(NetconfigWifi *wifi, GError **error)
 		return FALSE;
 	}
 
+	if (power_in_progress) {
+		netconfig_error_wifi_driver_failed(error);
+		return FALSE;
+	}
+
 	err = __netconfig_wifi_try_to_load_driver();
 	if (err < 0) {
 		if (err == -EINPROGRESS)
@@ -368,6 +401,11 @@ gboolean netconfig_iface_wifi_remove_driver(NetconfigWifi *wifi, GError **error)
 	DBG("Wi-Fi power off requested");
 
 	g_return_val_if_fail(wifi != NULL, FALSE);
+
+	if (power_in_progress) {
+		netconfig_error_wifi_driver_failed(error);
+		return FALSE;
+	}
 
 	if (__netconfig_wifi_try_to_remove_driver() != TRUE) {
 		netconfig_error_wifi_driver_failed(error);
