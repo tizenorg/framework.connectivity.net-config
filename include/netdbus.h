@@ -32,6 +32,7 @@ extern "C" {
 #define CONNMAN_PATH					"/net/connman"
 
 #define CONNMAN_CLOCK_INTERFACE				CONNMAN_SERVICE ".Clock"
+#define CONNMAN_ERROR_INTERFACE				CONNMAN_SERVICE ".Error"
 #define CONNMAN_MANAGER_INTERFACE			CONNMAN_SERVICE ".Manager"
 #define CONNMAN_SERVICE_INTERFACE			CONNMAN_SERVICE ".Service"
 #define CONNMAN_TECHNOLOGY_INTERFACE			CONNMAN_SERVICE ".Technology"
@@ -61,8 +62,14 @@ gboolean netconfig_is_ethernet_profile(const char *profile);
 gboolean netconfig_is_bluetooth_profile(const char *profile);
 
 char *netconfig_wifi_get_connected_service_name(DBusMessage *message);
+
+gboolean netconfig_invoke_dbus_method_nonblock(
+		const char *dest, const char *path,
+		const char *interface_name, const char *method, char *param_array[],
+		DBusPendingCallNotifyFunction notify_func);
 DBusMessage *netconfig_invoke_dbus_method(const char *dest, const char *path,
 		const char *interface_name, const char *method, char *param_array[]);
+
 gboolean netconfig_dbus_get_basic_params_string(DBusMessage *message,
 		char **key, int type, void *value);
 gboolean netconfig_dbus_get_basic_params_array(DBusMessage *message,

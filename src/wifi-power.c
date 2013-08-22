@@ -45,50 +45,70 @@
 static gboolean power_in_progress = FALSE;
 static gboolean fm_waiting = FALSE;
 
-static gboolean __netconfig_wifi_enable_technology(void)
+static void __netconfig_wifi_technology_reply(DBusPendingCall *call, void *data)
 {
-	DBusMessage *reply = NULL;
-	char param1[] = "string:Powered";
-	char param2[] = "variant:boolean:true";
-	char *param_array[] = {NULL, NULL, NULL};
+	DBusMessage *message;
 
-	param_array[0] = param1;
-	param_array[1] = param2;
+	message = dbus_pending_call_steal_reply(call);
 
-	reply = netconfig_invoke_dbus_method(CONNMAN_SERVICE, CONNMAN_WIFI_TECHNOLOGY_PREFIX,
-			CONNMAN_TECHNOLOGY_INTERFACE, "SetProperty", param_array);
+	if (dbus_message_get_type(message) == DBUS_MESSAGE_TYPE_ERROR) {
+		ERR("%s", dbus_message_get_error_name(message));
 
-	if (reply == NULL) {
-		ERR("Error! Request failed");
-		return FALSE;
+		if (dbus_message_is_error(message,
+				CONNMAN_ERROR_INTERFACE ".AlreadyEnabled") == TRUE) {
+			netconfig_wifi_update_power_state(TRUE);
+			power_in_progress = FALSE;
+		} else if (dbus_message_is_error(message,
+				CONNMAN_ERROR_INTERFACE ".AlreadyDisabled") == TRUE) {
+			netconfig_wifi_update_power_state(FALSE);
+			power_in_progress = FALSE;
+		}
+	} else {
+		DBG("Successfully requested");
 	}
 
-	dbus_message_unref(reply);
+	dbus_message_unref(message);
+	dbus_pending_call_unref(call);
+}
 
-	return TRUE;
+static gboolean __netconfig_wifi_enable_technology(void)
+{
+	gboolean reply = FALSE;
+	char param0[] = "string:Powered";
+	char param1[] = "variant:boolean:true";
+	char *param_array[] = { NULL, NULL, NULL };
+
+	param_array[0] = param0;
+	param_array[1] = param1;
+
+	reply = netconfig_invoke_dbus_method_nonblock(CONNMAN_SERVICE,
+			CONNMAN_WIFI_TECHNOLOGY_PREFIX, CONNMAN_TECHNOLOGY_INTERFACE,
+			"SetProperty", param_array, __netconfig_wifi_technology_reply);
+
+	if (reply != TRUE)
+		ERR("Fail to enable Wi-Fi");
+
+	return reply;
 }
 
 static gboolean __netconfig_wifi_disable_technology(void)
 {
-	DBusMessage *reply = NULL;
-	char param1[] = "string:Powered";
-	char param2[] = "variant:boolean:false";
-	char *param_array[] = {NULL, NULL, NULL};
+	gboolean reply = FALSE;
+	char param0[] = "string:Powered";
+	char param1[] = "variant:boolean:false";
+	char *param_array[] = { NULL, NULL, NULL };
 
-	param_array[0] = param1;
-	param_array[1] = param2;
+	param_array[0] = param0;
+	param_array[1] = param1;
 
-	reply = netconfig_invoke_dbus_method(CONNMAN_SERVICE, CONNMAN_WIFI_TECHNOLOGY_PREFIX,
-			CONNMAN_TECHNOLOGY_INTERFACE, "SetProperty", param_array);
+	reply = netconfig_invoke_dbus_method_nonblock(CONNMAN_SERVICE,
+			CONNMAN_WIFI_TECHNOLOGY_PREFIX, CONNMAN_TECHNOLOGY_INTERFACE,
+			"SetProperty", param_array, __netconfig_wifi_technology_reply);
 
-	if (reply == NULL) {
-		ERR("Error! Request failed");
-		return FALSE;
-	}
+	if (reply != TRUE)
+		ERR("Fail to disable Wi-Fi");
 
-	dbus_message_unref(reply);
-
-	return TRUE;
+	return reply;
 }
 
 static gboolean __netconfig_wifi_load_driver(void)

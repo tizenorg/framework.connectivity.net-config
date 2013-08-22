@@ -309,6 +309,66 @@ gboolean netconfig_is_bluetooth_profile(const char *profile)
 	return g_str_has_prefix(profile, CONNMAN_BLUETOOTH_SERVICE_PROFILE_PREFIX);
 }
 
+gboolean netconfig_invoke_dbus_method_nonblock(
+		const char *dest, const char *path,
+		const char *interface_name, const char *method, char *param_array[],
+		DBusPendingCallNotifyFunction notify_func)
+{
+	dbus_bool_t result;
+	DBusPendingCall *call;
+	DBusMessage *message = NULL;
+	DBusConnection *connection = NULL;
+
+	DBG("[DBUS Async] %s %s %s", interface_name, method, path);
+
+	connection = dbus_bus_get(DBUS_BUS_SYSTEM, NULL);
+	if (connection == NULL) {
+		ERR("Failed to get system bus");
+
+		return FALSE;
+	}
+
+	message = dbus_message_new_method_call(dest, path, interface_name, method);
+	if (message == NULL) {
+		ERR("Failed DBus method call");
+
+		dbus_connection_unref(connection);
+
+		return FALSE;
+	}
+
+	if (__netconfig_dbus_append_param(message, param_array) == FALSE) {
+		ERR("Failed to append DBus params");
+
+		dbus_message_unref(message);
+		dbus_connection_unref(connection);
+
+		return FALSE;
+	}
+
+	result = dbus_connection_send_with_reply(connection, message, &call,
+			NETCONFIG_DBUS_REPLY_TIMEOUT);
+
+	if (result != TRUE || call == NULL) {
+		ERR("dbus_connection_send_with_reply() failed.");
+
+		dbus_message_unref(message);
+		dbus_connection_unref(connection);
+
+		return FALSE;
+	}
+
+	if (notify_func == NULL)
+		dbus_pending_call_cancel(call);
+	else
+		dbus_pending_call_set_notify(call, notify_func, NULL, NULL);
+
+	dbus_message_unref(message);
+	dbus_connection_unref(connection);
+
+	return TRUE;
+}
+
 DBusMessage *netconfig_invoke_dbus_method(const char *dest, const char *path,
 		const char *interface_name, const char *method, char *param_array[])
 {
@@ -322,20 +382,25 @@ DBusMessage *netconfig_invoke_dbus_method(const char *dest, const char *path,
 	conn = dbus_bus_get(DBUS_BUS_SYSTEM, NULL);
 	if (conn == NULL) {
 		ERR("Failed to get system bus");
+
 		return NULL;
 	}
 
 	message = dbus_message_new_method_call(dest, path, interface_name, method);
 	if (message == NULL) {
 		ERR("Error!!! Failed to GetProperties");
+
 		dbus_connection_unref(conn);
+
 		return NULL;
 	}
 
 	if (__netconfig_dbus_append_param(message, param_array) == FALSE) {
 		ERR("Error!!! __netconfig_dbus_append_param() failed");
+
 		dbus_message_unref(message);
 		dbus_connection_unref(conn);
+
 		return NULL;
 	}
 
