@@ -1,0 +1,8 @@
+root net-config rw---
+_default_ net-config rw---
+net-config system::vconf_network rw---
+net-config system::vconf_setting rw---
+net-config system::use_internet rwx--
+net-config dbus rwx--
+system::use_internet net-config rwx--
+dbus net-config rwx--

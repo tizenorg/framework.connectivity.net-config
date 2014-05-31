@@ -1,0 +1,16 @@
+<manifest>
+	<define>
+		<domain name="net-config"/>
+	</define>
+	<assign>
+		<filesystem path="/etc/dbus-1/system.d/net-config.conf" label="_"/>
+		<filesystem path="/opt/etc/resolv.conf" label="system::use_internet"/>
+		<filesystem path="/usr/lib/systemd/system/net-config.service" label="_"/>
+		<filesystem path="/usr/lib/systemd/system/network.target.wants/net-config.service" label="_"/>
+		<filesystem path="/usr/share/dbus-1/services/net.netconfig.service" label="_"/>
+		<filesystem path="/usr/share/license/net-config" label="_"/>
+	</assign>
+	<request>
+		<domain name="net-config"/>
+	</request>
+</manifest>

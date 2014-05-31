@@ -1,0 +1,1970 @@
+net-config (0.1.197) unstable; urgency=low
+
+  * release mdm service only in cases of succeed
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.197
+
+ -- Misun Kim <ms0123.kim@samsung.com>  Mon, 20 Jan 2014 17:19:28 +0900
+
+net-config (0.1.196) unstable; urgency=low
+
+  * wifi-power: add emergency mode scenario
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.196
+
+ -- Danny Jeongseok Seo <s.seo@samsung.com>  Mon, 23 Dec 2013 22:08:41 +0900
+
+net-config (0.1.195) unstable; urgency=low
+
+  * wifi-agent: handle connect error
+  * wifi-background-scan: unnecessary duplicated bgscan_stop_timer
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.195
+
+ -- Danny Jeongseok Seo <s.seo@samsung.com>  Fri, 13 Dec 2013 21:06:37 +0900
+
+net-config (0.1.194) unstable; urgency=low
+
+  * avoid continuous recovery to wifi
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.194
+
+ -- Misun Kim <ms0123.kim@samsung.com>  Fri, 13 Dec 2013 18:13:58 +0900
+
+net-config (0.1.193) unstable; urgency=low
+
+  * avoid redundant sacn request
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.193
+
+ -- Misun Kim <ms0123.kim@samsung.com>  Fri, 13 Dec 2013 14:09:39 +0900
+
+net-config (0.1.192) unstable; urgency=low
+
+  * define DBUS_OBJECT_PATH_MAX
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.192
+
+ -- Danny Jeongseok Seo <s.seo@samsung.com>  Thu, 12 Dec 2013 00:30:23 +0900
+
+net-config (0.1.191) unstable; urgency=low
+
+  * Fix invalid memory access
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.191
+
+ -- Danny Jeongseok Seo <s.seo@samsung.com>  Wed, 11 Dec 2013 00:44:57 +0900
+
+net-config (0.1.190) unstable; urgency=low
+
+  * Revise checking internet accessibility logic for portal
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.190
+
+ -- Misun Kim <ms0123.kim@samsung.com>  Sun, 08 Dec 2013 19:34:04 +0900
+
+net-config (0.1.189) unstable; urgency=low
+
+  * Fix prevent issues
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.189
+
+ -- Sanghoon Cho <sanghoon80.cho@samsung.com>  Sun, 08 Dec 2013 12:35:27 +0900
+
+net-config (0.1.188) unstable; urgency=low
+
+  * Maintain Wi-Fi state due to restricted mode changes in vconf
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.188
+
+ -- Naveen H <naveen.h@samsung.com>  Sat, 07 Dec 2013 11:48:22 +0530
+
+net-config (0.1.187) precise; urgency=low
+
+  * To avoid 2 Noti for Portal
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.187
+
+ -- Vikram Shrirang Bidkar <vikram.sb@samsung.com>  Fri, 06 Dec 2013 19:36:53 +0530
+
+net-config (0.1.186) unstable; urgency=low
+
+  * Enable wps scan when Wi-Fi is connected
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.186
+
+ -- Sanghoon Cho <sanghoon80.cho@samsung.com>  Fri, 06 Dec 2013 18:05:40 +0900
+
+net-config (0.1.185) precise; urgency=low
+
+  * Remove mdm phase 2 option for wifi policy
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.185
+
+ -- sunil85.kim <sunil85kim@air>  Wed, 04 Dec 2013 21:44:01 +0900
+
+net-config (0.1.184) unstable; urgency=low
+
+  * Do not check internet accessibility when smart switch is turned off
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.184
+
+ -- Misun Kim <ms0123.kim@samsung.com>  Wed, 04 Dec 2013 20:36:49 +0900
+
+net-config (0.1.183) unstable; urgency=low
+
+  * Revise recover logic to connect Wi-Fi switched with good signal
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.183
+
+ -- Misun Kim <ms0123.kim@samsung.com>  Wed, 04 Dec 2013 16:33:47 +0900
+
+net-config (0.1.182) unstable; urgency=low
+
+  * pseudonym id: remove sim/aka pseudonymid files when device rebooted
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.182
+
+ -- Sanghoon Cho <sanghoon80.cho@samsung.com>  Tue, 03 Dec 2013 22:03:35 +0900
+
+net-config (0.1.181) unstable; urgency=low
+
+  * Delete wifi notification if no wifi profiles found
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.181
+
+ -- Naveen H <naveen.h@samsung.com>  Tue, 03 Dec 2013 16:46:46 +0530
+
+net-config (0.1.180) unstable; urgency=low
+
+  * Maintain Wi-Fi state due to airplane mode changes in vconf
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.180
+
+ -- Naveen H <naveen.h@samsung.com>  Mon, 02 Dec 2013 16:59:48 +0530
+
+net-config (0.1.179) unstable; urgency=low
+
+  * error: revise net-config errors
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.179
+
+ -- Danny Jeongseok Seo <s.seo@samsung.com>  Fri, 29 Nov 2013 23:31:54 +0900
+
+net-config (0.1.178) unstable; urgency=low
+
+  * agent: fix hidden network connection
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.178
+
+ -- Danny Jeongseok Seo <s.seo@samsung.m>  Fri, 29 Nov 2013 12:05:24 +0900
+
+net-config (0.1.177) unstable; urgency=low
+
+  * network-state: default TCP buffer size
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.177
+
+ -- Danny Jeongseok Seo <s.seo@samsung.com>  Thu, 28 Nov 2013 23:54:42 +0900
+
+net-config (0.1.176) unstable; urgency=low
+
+  * ConnMan agent: support hidden network connection
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.176
+
+ -- Danny Jeongseok Seo <s.seo@samsung.com>  Thu, 28 Nov 2013 15:45:39 +0900
+
+net-config (0.1.175) unstable; urgency=low
+
+  * absolute execute paths
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.175
+
+ -- Danny Jeongseok Seo <s.seo@samsung.com>  Thu, 28 Nov 2013 11:41:51 +0900
+
+net-config (0.1.174) unstable; urgency=low
+
+  * revise script path and return value
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.174
+
+ -- Sanghoon Cho <sanghoon80.cho@samsung.com>  Wed, 27 Nov 2013 15:57:51 +0900
+
+net-config (0.1.173) unstable; urgency=low
+
+  * Fix prevent defect - remove dead code
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.173
+
+ -- Misun Kim <ms0123.kim@samsung.com>  Mon, 25 Nov 2013 19:55:31 +0900
+
+net-config (0.1.172) unstable; urgency=low
+
+  * remove vconf callback - power saving mode
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.172
+
+ -- Sanghoon Cho <sanghoon80.cho@samsung.com>  Fri, 22 Nov 2013 12:12:21 +0900
+
+net-config (0.1.171) unstable; urgency=low
+
+  * apply csc feature for portal ignore list
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.171 
+
+ -- Misun Kim <ms0123.kim@samsung.com>  Wed, 20 Nov 2013 16:17:51 +0900
+
+net-config (0.1.170) unstable; urgency=low
+
+  * wps-scan: fix crash for invalid utf8 ssid
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.170
+
+ -- Sanghoon Cho <sanghoon80.cho@samsung.com>  Tue, 19 Nov 2013 20:55:27 +0900
+
+net-config (0.1.169) unstable; urgency=low
+
+  * wifi-background-scan: immediate scan for a rather fast auto-connection
+  * TIZEN has a poor auto-connection 160% than Android does (MEV)
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.169
+
+ -- Danny Jeongseok Seo <s.seo@samsung.com>  Mon, 18 Nov 2013 16:17:41 +0900
+
+net-config (0.1.168) unstable; urgency=low
+
+  * wifi-state: lock power state during Wi-Fi connection
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.168
+
+ -- Danny Jeongseok Seo <s.seo@samsung.com>  Fri, 15 Nov 2013 18:38:18 +0900
+
+net-config (0.1.167) unstable; urgency=low
+
+  * wifi-indicator: 3 leveled wifi activity booster
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.167
+
+ -- Danny Jeongseok Seo <s.seo@samsung.com>  Fri, 15 Nov 2013 15:28:26 +0900
+
+net-config (0.1.166) unstable; urgency=low
+
+  * resolve: disable ipv6 loopback
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.166
+
+ -- Danny Jeongseok Seo <s.seo@samsung.com>  Thu, 14 Nov 2013 22:16:34 +0900
+
+net-config (0.1.165) unstable; urgency=low
+
+  * Revise WPS scan
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.165
+
+ -- Danny Jeongseok Seo <s.seo@samsung.com>  Thu, 14 Nov 2013 18:02:04 +0900
+
+net-config (0.1.164) unstable; urgency=low
+
+  * pseudonym id: remove when device rebooted
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.164
+
+ -- Danny Jeongseok Seo <s.seo@samsung.com>  Thu, 14 Nov 2013 00:39:53 +0900
+
+net-config (0.1.163) unstable; urgency=low
+
+  * log: adjust log permission
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.163
+
+ -- Danny Jeongseok Seo <s.seo@samsung.com>  Wed, 13 Nov 2013 23:57:02 +0900
+
+net-config (0.1.162) unstable; urgency=low
+
+  * wifi-firmware: hardening Wi-Fi firmware status
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.162
+
+ -- Danny Jeongseok Seo <s.seo@samsung.com>  Mon, 11 Nov 2013 23:22:59 +0900
+
+net-config (0.1.161) unstable; urgency=low
+
+  * Fix RSSI filter scheme
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.161
+
+ -- Danny Jeongseok Seo <s.seo@samsung.com>  Mon, 11 Nov 2013 19:28:43 +0900
+
+net-config (0.1.160) unstable; urgency=low
+
+  * agent: Revise EAP connection error, and delete config when if failed
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.160
+
+ -- Danny Jeongseok Seo <s.seo@samsung.com>  Mon, 11 Nov 2013 18:15:32 +0900
+
+net-config (0.1.159) unstable; urgency=low
+
+  * Revise checking internet accessibility
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.159
+
+ -- Misun Kim <ms0123.kim@samsung.com>  Fri, 08 Nov 2013 12:03:58 +0900
+
+net-config (0.1.158) unstable; urgency=low
+
+  * Fix not update for power saving mode
+  * Revise Wi-Fi power, Wi-Fi technology state, Wi-Fi firmware management
+  * Tag: net-config_0.1.158
+
+ -- Sanghoon Cho <sanghoon80.cho@samsung.com>  Wed, 06 Nov 2013 19:51:07 +0900
+
+net-config (0.1.157) unstable; urgency=low
+
+  * Connect Cellular after confirmed
+  * Revise Wi-Fi power, Wi-Fi technology state, Wi-Fi firmware management
+  * Tag: net-config_0.1.157
+
+ -- Misun Kim <ms0123.kim@samsung.com>  Tue, 05 Nov 2013 20:50:25 +0900
+
+net-config (0.1.156) unstable; urgency=low
+
+  * New DBus API to enable and disable WLAN driver
+  * Revise Wi-Fi power, Wi-Fi technology state, Wi-Fi firmware management
+  * Tag: net-config_0.1.156
+
+ -- Danny Jeongseok Seo <s.seo@samsung.com>  Mon, 04 Nov 2013 19:47:50 +0900
+
+net-config (0.1.155) unstable; urgency=low
+
+  * wifi: network restricted mode
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.155
+
+ -- Danny Jeongseok Seo <s.seo@samsung.com>  Fri, 01 Nov 2013 17:31:44 +0900
+
+net-config (0.1.154) unstable; urgency=low
+
+  * Update DBus signal fitler
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.154
+
+ -- Sanghoon Cho <sanghoon80.cho@samsung.com>  Mon, 28 Oct 2013 18:22:57 +0900
+
+net-config (0.1.153) unstable; urgency=low
+
+  * Draw SecurityRestricted popup using net-popup
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.153
+
+ -- Naveen H <naveen.h@samsung.com>  Tue, 29 Oct 2013 11:00:25 +0530
+
+net-config (0.1.152) unstable; urgency=low
+
+  * agent: ConnMan agent should be registered
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.152
+
+ -- Danny Jeongseok Seo <s.seo@samsung.com>  Sun, 27 Oct 2013 18:27:32 +0900
+
+net-config (0.1.151) unstable; urgency=low
+
+  * Get link signal from /proc/net/wireless
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.151
+
+ -- Danny Jeongseok Seo <s.seo@samsung.com>  Sun, 27 Oct 2013 17:14:40 +0900
+
+net-config (0.1.150) unstable; urgency=low
+
+  * remove legacy sysvinit, enable systemd activation with dbus
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.150
+
+ -- Danny Jeongseok Seo <s.seo@samsung.com>  Sun, 27 Oct 2013 11:44:26 +0900
+
+net-config (0.1.149) unstable; urgency=low
+
+  * Revise checking internet status
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.149
+
+ -- Misun Kim <ms0123.kim@samsung.com>  Thu, 24 Oct 2013 14:19:56 +0900
+
+net-config (0.1.148) unstable; urgency=low
+
+  * agent: ConnMan agent should be registered
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.148
+
+ -- Danny Jeongseok Seo <s.seo@samsung.com>  Tue, 22 Oct 2013 17:45:57 +0900
+
+net-config (0.1.147) unstable; urgency=low
+
+  * handle http response with 307 status [P131017-02660]
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.147
+
+ -- Misun Kim <ms0123.kim@samsung.com>  Mon, 21 Oct 2013 21:11:10 +0900
+
+net-config (0.1.146) unstable; urgency=low
+
+  * add logs for vconf set
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.146
+
+ -- Misun Kim <ms0123.kim@samsung.com>  Fri, 18 Oct 2013 18:19:37 +0900
+
+net-config (0.1.145) unstable; urgency=low
+
+  * clean up poor rx count
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.145
+
+ -- Misun Kim <ms0123.kim@samsung.com>  Mon, 14 Oct 2013 16:29:58 +0900
+
+net-config (0.1.144) unstable; urgency=low
+
+  * indicator: revise indicator update
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.144
+
+ -- Danny Jeongseok Seo <s.seo@samsung.com>  Sun, 13 Oct 2013 12:28:39 +0900
+
+net-config (0.1.143) unstable; urgency=low
+
+  * util: terminated when execute has been failed
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.143
+
+ -- Danny Jeongseok Seo <s.seo@samsung.com>  Fri, 11 Oct 2013 22:39:16 +0900
+
+net-config (0.1.142) unstable; urgency=low
+
+  * Update enum for power saving mode
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.142
+
+ -- Sanghoon Cho <sanghoon80.cho@samsung.com>  Thu, 10 Oct 2013 22:04:22 +0900
+
+net-config (0.1.141) unstable; urgency=low
+
+  * Check for Wifi power state before loading/unloading of Wifi driver
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.141
+ -- Jaganmohan K <j.kanakala@samsung.com>  Thu, 10 Oct 2013 11:59:54 +0530
+
+net-config (0.1.140) unstable; urgency=low
+
+  * Modify pseudonym ID path
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.140
+
+ -- Sanghoon Cho <sanghoon80.cho@samsung.com>  Tue, 08 Oct 2013 20:56:27 +0900
+
+net-config (0.1.139) unstable; urgency=low
+
+  * data activity booster
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.139
+
+ -- Danny Jeongseok Seo <s.seo@samsung.com>  Tue, 08 Oct 2013 20:20:32 +0900
+
+net-config (0.1.138) unstable; urgency=low
+
+  * Fix Wi-Fi on/off for airplane mode
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.138
+
+ -- Sanghoon Cho <sanghoon80.cho@samsung.com>  Tue, 08 Oct 2013 19:41:35 +0900
+
+net-config (0.1.137) unstable; urgency=low
+
+  * Fix Wi-Fi power state (WPS, recovery and deep sleep)
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.137
+
+ -- Danny Jeongseok Seo <s.seo@samsung.com>  Fri, 04 Oct 2013 22:45:09 +0900
+
+net-config (0.1.136) unstable; urgency=low
+
+  * fixed missing braces
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.136
+
+ -- Misun Kim <ms0123.kim@samsung.com>  Mon, 07 Oct 2013 19:31:52 +0900
+
+net-config (0.1.135) unstable; urgency=low
+
+  * captive portal is not worked for docomo Wi-Fi
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.135
+
+ -- Misun Kim <ms0123.kim@samsung.com>  Mon, 07 Oct 2013 13:53:08 +0900
+
+net-config (0.1.134) unstable; urgency=low
+
+  * revise getting 'LocalNetwork' property
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.134
+
+ -- Misun Kim <ms0123.kim@samsung.com>  Fri, 04 Oct 2013 19:54:55 +0900
+
+net-config (0.1.133) unstable; urgency=low
+
+  * resolve: enable IPv6
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.133
+
+ -- Danny Jeongseok Seo <s.seo@samsung.com>  Fri, 04 Oct 2013 15:21:58 +0900
+
+net-config (0.1.132) unstable; urgency=low
+
+  * resolv: enable attempts 8
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.132
+
+ -- Danny Jeongseok Seo <s.seo@samsung.com>  Fri, 04 Oct 2013 14:53:08 +0900
+
+net-config (0.1.131) unstable; urgency=low
+
+  * Launch keepit-service when Wi-Fi is connected
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.131
+
+ -- Sanghoon Cho <sanghoon80.cho@samsung.com>  Fri, 27 Sep 2013 14:30:48 +0900
+
+net-config (0.1.130) unstable; urgency=low
+
+  * Avoid unnecessary net-popup notifications(Wi-Fi networks available)
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.130
+
+ -- Naveen H <naveen.h@samsung.com>  Thu, 26 Sep 2013 18:57:55 +0530
+
+net-config (0.1.129) unstable; urgency=low
+
+  * Net-config directly makes a connection to ConnMan when Wi-Fi EAP configuration installed
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.129
+
+ -- Danny Jeongseok Seo <s.seo@samsung.com>  Mon, 23 Sep 2013 17:54:39 +0900
+
+net-config (0.1.128) unstable; urgency=low
+
+  * lower disconnect threshold rssi and fix bug
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.128
+
+ -- Misun Kim <ms0123.kim@samsung.com>  Mon, 23 Sep 2013 21:48:03 +0900
+
+net-config (0.1.127) unstable; urgency=low
+
+  * Smart switching: remove vconf callback for flight mode
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.127
+
+ -- Sanghoon Cho <sanghoon80.cho@samsung.com>  Mon, 23 Sep 2013 15:38:50 +0900
+
+net-config (0.1.126) unstable; urgency=low
+
+  * Revise Wi-Fi technology state transition
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.126
+
+ -- Danny Jeongseok Seo <s.seo@samsung.com>  Sat, 14 Sep 2013 00:07:11 +0900
+
+net-config (0.1.125) unstable; urgency=low
+
+  * Net-config directly makes a connection to ConnMan when Wi-Fi agent information is fed
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.125
+
+ -- Danny Jeongseok Seo <s.seo@samsung.com>  Fri, 13 Sep 2013 23:01:50 +0900
+
+net-config (0.1.124) unstable; urgency=low
+
+  * ConnMan agent error return when request input is invalid
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.124
+
+ -- Danny Jeongseok Seo <s.seo@samsung.com>  Fri, 13 Sep 2013 16:51:23 +0900
+
+net-config (0.1.123) unstable; urgency=low
+
+  * Revise initial Wi-Fi power on, check SIM status
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.123
+
+ -- Sanghoon Cho <sanghoon80.cho@samsung.com>  Fri, 13 Sep 2013 20:26:25 +0900
+
+net-config (0.1.122) precise; urgency=low
+
+  * add portal notification instead of launching browser directly
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.122
+
+ -- Misun Kim <ms0123.kim@samsung.com>  Fri, 13 Sep 2013 19:19:20 +0900
+
+net-config (0.1.121) unstable; urgency=low
+
+  * Fix several leaks
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.121
+
+ -- Danny Jeongseok Seo <s.seo@samsung.com>  Wed, 11 Sep 2013 16:21:14 +0900
+
+net-config (0.1.120) unstable; urgency=low
+
+  * Remove pseudonym ID for Wi-Fi EAP-AKA/SIM while booting
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.120
+
+ -- Sanghoon Cho <sanghoon80.cho@samsung.com>  Tue, 11 Sep 2013 11:34:59 +0900
+
+net-config (0.1.119) unstable; urgency=low
+
+  * Fix several memory leaks
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.119
+
+ -- Danny Jeongseok Seo <s.seo@samsung.com>  Wed, 11 Sep 2013 00:41:28 +0900
+
+net-config (0.1.118) unstable; urgency=low
+
+  * Revise portal login, adjust tcp buffer size and remove kies-via-wifi
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.118
+
+ -- Danny Jeongseok Seo <s.seo@samsung.com>  Thu, 05 Sep 2013 21:27:08 +0900
+
+net-config (0.1.117) unstable; urgency=low
+
+  * disable DBus DAC
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.117
+
+ -- Danny Jeongseok Seo <s.seo@samsung.com>  Tue, 03 Sep 2013 17:44:50 +0900
+
+net-config (0.1.116) unstable; urgency=low
+
+  * apply new UX concept for smart switching and fix bug
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.116
+
+ -- Misun Kim <ms0123.kim@samsung.com>  Mon, 02 Sep 2013 16:10:24 +0900
+
+net-config (0.1.115) unstable; urgency=low
+
+  * DBus SMACK applied
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.115
+
+ -- Danny Jeongseok Seo <s.seo@samsung.com>  Fri, 30 Aug 2013 22:30:36 +0900
+
+net-config (0.1.114) unstable; urgency=low
+
+  * Enable to set/get Wi-Fi passpoint option
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.114
+
+ -- Sanghoon Cho <sanghoon80.cho@samsung.com>  Tue, 29 Aug 2013 21:13:41 +0900
+
+net-config (0.1.113) unstable; urgency=low
+
+  * Wi-Fi profile provisioned from CSC default
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.113
+
+ -- Danny Jeongseok Seo <s.seo@samsung.com>  Tue, 27 Aug 2013 23:19:40 +0900
+
+net-config (0.1.112) unstable; urgency=low
+
+  * Wi-Fi: revise Wi-Fi powemode to save consumption
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.112
+
+ -- Danny Jeongseok Seo <s.seo@samsung.com>  Tue, 27 Aug 2013 17:31:40 +0900
+
+net-config (0.1.111) unstable; urgency=low
+
+  * Revise Wi-Fi suspendmode during associating and DHCP
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.111
+
+ -- Danny Jeongseok Seo <s.seo@samsung.com>  Fri, 23 Aug 2013 15:47:35 +0900
+
+net-config (0.1.110) unstable; urgency=low
+
+  * Portal login: Handling Captive Portal AP disconnection
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.110
+ -- Jaganmohan K <j.kanakala@samsung.com>  Thu, 22 Aug 2013 12:32:21 +0530
+
+net-config (0.1.109) unstable; urgency=low
+
+  * Captive portal login implementation
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.109
+
+ -- Jaganmohan K <j.kanakala@samsung.com>  Mon, 05 Aug 2013 22:32:49 +0530
+
+net-config (0.1.108) unstable; urgency=low
+
+  * Implement Wi-Fi power saving mode
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.108
+
+ -- Sanghoon Cho <sanghoon80.cho@samsung.com>  Fri, 09 Aug 2013 18:35:44 +0900
+
+net-config (0.1.107) unstable; urgency=low
+
+  * Implement to enable Wi-Fi scan on Wi-Fi off state
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.107
+
+ -- Sanghoon Cho <sanghoon80.cho@samsung.com>  Tue, 06 Aug 2013 10:41:02 +0900
+
+net-config (0.1.106) unstable; urgency=low
+
+  * Handle 'Proxy' property change signal
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.106
+
+ -- Naveen H <naveen.h@samsung.com>  Fri, 26 Jul 2013 19:06:37 +0530
+
+net-config (0.1.105) unstable; urgency=low
+
+  * Revise country code setting, remove revision number
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.105
+
+ -- Ravi RK <ravi.rk@samsung.com>  Fri, 19 Jul 2013 13:37:25 +0530
+
+net-config (0.1.104) unstable; urgency=low
+
+  * Support SIOCKILLADDR during disconnection
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.104
+
+ -- Naveen H <naveen.h@samsung.com>  Tue, 16 Jul 2013 09:58:23 +0530
+
+net-config (0.1.103) unstable; urgency=low
+
+  * Support early suspend driver command
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.103
+
+ -- Ravi RK <ravi.rk@samsung.com>  Fri, 28 Jun 2013 16:06:11 +0530
+
+net-config (0.1.102) unstable; urgency=low
+
+  * Update Wi-Fi indicator when it has been changed
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.102
+
+ -- Danny Jeongseok Seo <s.seo@samsung.com>  Sat, 06 Jul 2013 16:28:07 +0900
+
+net-config (0.1.101) unstable; urgency=low
+
+  * Revise ssid scan response
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.101
+
+ -- Danny Jeongseok Seo <s.seo@samsung.com>  Sat, 29 Jun 2013 12:08:05 +0900
+
+net-config (0.1.100) unstable; urgency=low
+
+  * Static variable rather than heap variable (prevent warning)
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.100
+
+ -- Danny Jeongseok Seo <s.seo@samsung.com>  Wed, 19 Jun 2013 14:42:11 +0900
+
+net-config (0.1.99) unstable; urgency=low
+
+  * Return correct value of specific scan request
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.99
+
+ -- Naveen H <naveen.h@samsung.com>  Tue, 18 Jun 2013 11:31:22 +0530
+
+net-config (0.1.98) unstable; urgency=low
+
+  * Temporary disable IPv6
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.98
+
+ -- Danny Jeongseok Seo <s.seo@samsung.com>  Thu, 13 Jun 2013 21:25:20 +0900
+
+net-config (0.1.97) unstable; urgency=low
+
+  * Add interface of device picker test during power on
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.97
+
+ -- Danny Jeongseok Seo <s.seo@samsung.com>  Sat, 08 Jun 2013 18:18:35 +0900
+
+net-config (0.1.96) unstable; urgency=low
+
+  * Remove init script
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.96
+
+ -- Danny Jeongseok Seo <s.seo@samsung.com>  Tue, 04 Jun 2013 15:47:21 +0900
+
+net-config (0.1.95) unstable; urgency=low
+
+  * Support Wi-Fi connected notification
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.95
+
+ -- Sanghoon Cho <sanghoon80.cho@samsung.com>  Mon, 03 Jun 2013 18:27:04 +0900
+
+net-config (0.1.94) unstable; urgency=low
+
+  * Enable systemd tizen-runtime
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.94
+
+ -- Danny Jeongseok Seo <s.seo@samsung.com>  Sat, 25 May 2013 14:16:00 +0900
+
+net-config (0.1.93) unstable; urgency=low
+
+  * Revise the initiation of 3G alert popup
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.93
+
+ -- Danny Jeongseok Seo <s.seo@samsung.com>  Wed, 22 May 2013 21:08:10 +0900
+
+net-config (0.1.92-56) unstable; urgency=low
+
+  * Update strings for smart switch notification
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.92_56
+
+ -- Sanghoon Cho <sanghoon80.cho@samsung.com>  Tue, 21 May 2013 13:55:43 +0900
+
+net-config (0.1.92-55) unstable; urgency=low
+
+  * Udpate for smack_rule(labeling vconf)
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.92_55
+
+ -- sunil85.kim <isurit@sunil85.kim>  Fri, 10 May 2013 22:40:58 +0900
+
+net-config (0.1.92-54) unstable; urgency=low
+
+  * Handle Wi-Fi firmware crash
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.92_54
+
+ -- Danny Jeongseok Seo <s.seo@samsung.com>  Thu, 09 May 2013 22:41:38 +0900
+
+net-config (0.1.92-53) unstable; urgency=low
+
+  * logd enabled
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.92_53
+
+ -- Danny Jeongseok Seo <s.seo@samsung.com>  Thu, 09 May 2013 09:47:00 +0900
+
+net-config (0.1.92-52) unstable; urgency=low
+
+  * Add exception handling for MDM
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.92_52
+
+ -- JaeHyun Kim <jeik01.kim@samsung.com>  Tue, 07 May 2013 19:18:58 +0900
+
+net-config (0.1.92-51) unstable; urgency=low
+
+  * Modify Smart Switching
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.92_51
+
+ -- JunHwan An <jh48.an@samsung.com>  Tue, 30 Apr 2013 18:51:46 +0900
+
+net-config (0.1.92-50) unstable; urgency=low
+
+  * Enable network module log
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.92_50
+
+ -- Danny Jeongseok Seo <s.seo@samsung.com>  Thu, 02 May 2013 16:25:41 +0900
+
+net-config (0.1.92-49) unstable; urgency=low
+
+  * logd enabled to get Wi-Fi power state
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.92_49
+
+ -- Danny Jeongseok Seo <s.seo@samsung.com>  Fri, 26 Apr 2013 13:20:52 +0900
+
+net-config (0.1.92-48) unstable; urgency=low
+
+  * Fix Prevent Issues
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.92_48
+
+ -- Madhusmita Sahu <madhusmita.s@samsung.com>  Tue, 23 Apr 2013 18:55:36 +0530
+
+net-config (0.1.92-47) unstable; urgency=low
+
+  * Upgrade Smart Switching (Apply Smart switching On/Off)
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.92_47
+
+ -- JunHwan An <jh48.an@samsung.com>  Mon, 15 Apr 2013 15:51:10 +0900
+
+net-config (0.1.92-46) unstable; urgency=low
+
+  * Fix Prevent issues
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.92_46
+
+ -- Naveen H <naveen.h@samsung.com>  Mon, 15 Apr 2013 14:56:45 +0900
+
+net-config (0.1.92-45) unstable; urgency=low
+
+  * Update spec file for added vconf
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.92_45
+
+ -- Sanghoon Cho <sanghoon80.cho@samsung.com>  Fri, 12 Apr 2013 19:18:09 +0900
+
+net-config (0.1.92-44) unstable; urgency=low
+
+  * Revise Wi-Fi state for tx/rx transfer
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.92_44
+
+ -- Sanghoon Cho <sanghoon80.cho@samsung.com>  Fri, 12 Apr 2013 16:48:22 +0900
+
+net-config (0.1.92-43) unstable; urgency=low
+
+  * Add Wi-Fi state for tx/rx transfer
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.92_43
+
+ -- Sanghoon Cho <sanghoon80.cho@samsung.com>  Thu, 11 Apr 2013 18:04:48 +0900
+
+net-config (0.1.92-42) unstable; urgency=low
+
+  * Eliminate user privacy logs
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.92_42
+
+ -- Danny Jeongseok Seo <s.seo@samsung.com>  Fri, 05 Apr 2013 22:34:58 +0900
+
+net-config (0.1.92-41) unstable; urgency=low
+
+  * Power saving strategy feature
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.92_41
+
+ -- Naveen H <naveen.h@samsung.com>  Thu, 28 Mar 2013 10:35:25 +0900
+
+net-config (0.1.92-40) unstable; urgency=low
+
+  * Disable power save mode while connecting
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.92_40
+
+ -- Sanghoon Cho <sanghoon80.cho@samsung.com>  Thu, 28 Mar 2013 14:15:36 +0900
+
+net-config (0.1.92-39) unstable; urgency=low
+
+  * Print the result of child process after running script
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.92_39
+
+ -- Naveen H <naveen.h@samsung.com>  Sat, 23 Mar 2013 23:26:49 +0900
+
+net-config (0.1.92-38) unstable; urgency=low
+
+  * Start/Stop background scan when Wi-Fi is disconnected/connected
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.92_38
+
+ -- Sanghoon Cho <sanghoon80.cho@samsung.com>  Fri, 15 Mar 2013 17:45:01 +0900
+
+net-config (0.1.92-37) unstable; urgency=low
+
+  * Add new dbus method to revise bg scan mechanism during hidden network search
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.92_37
+
+ -- Naveen H <naveen.h@samsung.com>  Thu, 14 Mar 2013 10:55:26 +0530
+
+net-config (0.1.92-36) unstable; urgency=low
+
+  * Move resolv.conf file to read-only part(/etc)
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.92_36
+
+ -- Sanghoon Cho <sanghoon80.cho@samsung.com>  Tue, 12 Mar 2013 21:52:11 +0900
+
+net-config (0.1.92-35) unstable; urgency=low
+
+  * Fix net-config crash and memory leaks
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.92_35
+
+ -- Ravi RK <ravi.rk@samsung.com>  Tue, 12 Mar 2013 08:50:47 +0530
+
+net-config (0.1.92-34) unstable; urgency=low
+
+  * Revise booting sequence
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.92_34
+
+ -- Sanghoon Cho <sanghoon80.cho@samsung.com>  Mon, 11 Mar 2013 12:05:40 +0900
+
+net-config (0.1.92-33) unstable; urgency=low
+
+  * Wi-Fi concurrent mode support
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.92_33
+
+ -- Danny Jeongseok Seo <s.seo@samsung.com>  Sun, 10 Mar 2013 16:36:22 +0900
+
+net-config (0.1.92-32) unstable; urgency=low
+
+  * Optimize fetching of profile list
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.92_32
+
+ -- Naveen H <naveen.h@samsung.com>  Mon, 04 Mar 2013 10:07:36 +0530
+
+net-config (0.1.92-31) unstable; urgency=low
+
+  * Fix thread conlict of smart-switching
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.92_31
+
+ -- Sanghoon Cho <sanghoon80.cho@samsung.com>  Thu, 28 Feb 2013 11:02:31 +0900
+
+net-config (0.1.92-30) unstable; urgency=low
+
+  * Update default connection when net-config lost DBus signals
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.92_30
+
+ -- Praveen C <pravin.c@samsung.com>  Tue, 26 Feb 2013 17:30:05 +0900
+
+net-config (0.1.92-29) unstable; urgency=low
+
+  * Check for EAP service before trying to delete config file
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.92_29
+
+ -- Naveen H <naveen.h@samsung.com>  Mon, 25 Feb 2013 09:19:13 +0530
+
+net-config (0.1.92-28) unstable; urgency=low
+
+  * Recover agent registration when ConnMan destroyed
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.92_28
+
+ -- Danny Jeongseok Seo <s.seo@samsung.com>  Mon, 25 Feb 2013 17:48:51 +0900
+
+net-config (0.1.92-27) unstable; urgency=low
+
+  * Fix PLM#P130221-4417
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.92_27
+
+ -- Ravi RK <ravi.rk@samsung.com>  Fri, 22 Feb 2013 19:16:51 +0530
+
+net-config (0.1.92-26) unstable; urgency=low
+
+  * Check for Wi-Fi state w.r.t Flight mode changes
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.92_26
+
+ -- Naveen H <naveen.h@samsung.com>  Wed, 20 Feb 2013 17:55:31 +0530
+
+net-config (0.1.92-25) unstable; urgency=low
+
+  * Fix prevent bugs
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.92_25
+
+ -- Danny Jeongseok Seo <s.seo@samsung.com>  Thu, 21 Feb 2013 14:31:39 +0900
+
+net-config (0.1.92-24) unstable; urgency=low
+
+  * Start "Kies via Wi-Fi", when Wi-Fi is connected
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.92_24
+
+ -- Danny Jeongseok Seo <s.seo@samsung.com>  Wed, 20 Feb 2013 14:51:09 +0900
+
+net-config (0.1.92-23) unstable; urgency=low
+
+  * Change to netlink from ioctl when get Wi-Fi signal strength
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.92_23
+
+ -- Sanghoon Cho <sanghoon80.cho@samsung.com>  Wed, 20 Feb 2013 21:58:29 +0900
+
+net-config (0.1.92-22) unstable; urgency=low
+
+  * Network configuration module launched by DBus auto-activation
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.92_22
+
+ -- Danny Jeongseok Seo <s.seo@samsung.com>  Tue, 19 Feb 2013 12:24:22 +0900
+
+net-config (0.1.92-21) unstable; urgency=low
+
+  * Wi-Fi concurrent mode
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.92_21
+
+ -- Danny Jeongseok Seo <s.seo@samsung.com>  Thu, 14 Feb 2013 12:03:43 +0900
+
+net-config (0.1.92-20) unstable; urgency=low
+
+  * Implement Wi-Fi smart offloading
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.92_20
+
+ -- Sanghoon Cho <sanghoon80.cho@samsung.com>  Tue, 29 Jan 2013 11:21:07 +0900
+
+net-config (0.1.92-19) unstable; urgency=low
+
+  * Clear the WiFi found notification after changing the the WiFi state to OFF. (Fix PLM # P130206-6006)
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.92_19
+
+ -- Praveen C <pravin.c@samsung.com>  Mon, 11 Feb 2013 15:22:50 +0530
+
+net-config (0.1.92-18) unstable; urgency=low
+
+  * Update regulatory domain soon after driver loading
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.92_18
+
+ -- Ravi RK <ravi.rk@samsung.com>  Tue, 05 Feb 2013 15:08:21 +0530
+
+net-config (0.1.92-17) unstable; urgency=low
+
+  * SMACK rules updated
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.92_17
+
+ -- Danny Jeongseok Seo <s.seo@samsung.com>  Fri, 01 Feb 2013 16:45:36 +0900
+
+net-config (0.1.92-16) unstable; urgency=low
+
+  * Change net-popup package name.
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.92_16
+
+ -- Praveen C <pravin.c@samsung.com>  Tue, 29 Jan 2013 16:54:30 +0530
+
+net-config (0.1.92-15) unstable; urgency=low
+
+  * Debug dlog/file optionable
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.92_15
+
+ -- Danny Jeongseok Seo <s.seo@samsung.com>  Tue, 29 Jan 2013 17:02:53 +0900
+
+net-config (0.1.92-14) unstable; urgency=low
+
+  * Fix WPS PBC
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.92_14
+
+ -- Danny Jeongseok Seo <s.seo@samsung.com>  Mon, 28 Jan 2013 19:57:42 +0900
+
+net-config (0.1.92-13) unstable; urgency=low
+
+  * Clear agent fields before update
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.92_13
+
+ -- Danny Jeongseok Seo <s.seo@samsung.com>  Mon, 28 Jan 2013 12:21:07 +0900
+
+net-config (0.1.92-12) unstable; urgency=low
+
+  * Implement 'ReportError' method in net-config agent
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.92_12
+
+ -- Naveen H <naveen.h@samsung.com>  Fri, 25 Jan 2013 17:49:05 +0530
+
+net-config (0.1.92-11) unstable; urgency=low
+
+  * Fix Wi-Fi PBC & connection
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.92_11
+
+ -- Danny Jeongseok Seo <s.seo@samsung.com>  Fri, 25 Jan 2013 13:22:31 +0900
+
+net-config (0.1.92-10) unstable; urgency=low
+
+  * Add support for WPS type connection in agent
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.92_10
+
+ -- Praveen C <pravin.c@samsung.com>  Thu, 24 Jan 2013 14:29:19 +0530
+
+net-config (0.1.92-9) unstable; urgency=low
+
+  * Check already powered during Wi-Fi enable/disable
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.92_9
+
+ -- Naveen H <naveen.h@samsung.com>  Thu, 24 Jan 2013 10:16:19 +0530
+
+net-config (0.1.92-8) unstable; urgency=low
+
+  * Revise Wi-Fi technology state
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.92_8
+
+ -- Danny Jeongseok Seo <s.seo@samsung.com>  Wed, 23 Jan 2013 12:07:53 +0900
+
+net-config (0.1.92-7) unstable; urgency=low
+
+  * Fix Smart Switching
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.92_7
+
+ -- Danny Jeongseok Seo <s.seo@samsung.com>  Wed, 16 Jan 2013 23:58:23 +0900
+
+net-config (0.1.92-6) unstable; urgency=low
+
+  * Fix crash issues seen due to invalid memory freeing
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.92_6
+
+ -- Naveen H <naveen.h@samsung.com>  Tue, 08 Jan 2013 15:25:09 +0530
+
+net-config (0.1.92-5) unstable; urgency=low
+
+  * Fix resource leak, check returns, etc.
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.92_5
+
+ -- Danny Jeongseok Seo <s.seo@samsung.com>  Wed, 02 Jan 2013 15:18:20 +0900
+
+net-config (0.1.92-4) unstable; urgency=low
+
+  * Launch net-popup from AUL. Moved the add/del notification into noti-popup.
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.92_4
+
+ -- Praveen C <pravin.c@samsung.com>  Fri, 04 Jan 2013 11:50:11 +0530
+
+net-config (0.1.92-3) unstable; urgency=low
+
+  * Change the way EAP config file is saved
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.92_3
+
+ -- Naveen H <naveen.h@samsung.com>  Thu, 27 Dec 2012 10:46:34 +0530
+
+net-config (0.1.92-2) unstable; urgency=low
+
+  * Fix crash due to non-NULL terminated string array.
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.92_2
+
+ -- Praveen C <pravin.c@samsung.com>  Thu, 20 Dec 2012 10:41:58 +0530
+
+net-config (0.1.92-1) unstable; urgency=low
+
+  * Upgrade ConnMan 1.3
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.92_1
+
+ -- Danny Jeongseok Seo <s.seo@samsung.com>  Tue, 18 Dec 2012 20:46:01 +0900
+
+net-config (0.1.91-3) unstable; urgency=low
+
+  * Changed the notification type from box type to list type.
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.91-3
+
+ -- Praveen C <pravin.c@samsung.com>  Tue, 18 Dec 2012 18:47:00 +0530
+
+net-config (0.1.91-2) unstable; urgency=low
+
+  * Add TCP buffer adjustment for LTE bearer
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.91-2
+
+ -- Danny Jeongseok Seo <s.seo@samsung.com>  Mon, 10 Dec 2012 19:36:40 +0900
+
+net-config (0.1.91-1) unstable; urgency=low
+
+  * Support Wi-Fi country code
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.91-1
+
+ -- Danny Jeongseok Seo <s.seo@samsung.com>  Mon, 10 Dec 2012 16:43:08 +0900
+
+net-config (0.1.90-14) unstable; urgency=low
+
+  * Disable NTP service
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.90-14
+
+ -- Danny Jeongseok Seo <s.seo@samsung.com>  Fri, 30 Nov 2012 17:10:47 +0900
+
+net-config (0.1.90-13) unstable; urgency=low
+
+  * Fix turn on Wi-Fi fails when Wi-Fi Direct is on
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.90-13
+
+ -- Sanghoon Cho <sanghoon80.cho@samsung.com>  Wed, 21 Nov 2012 16:59:56 +0900
+
+net-config (0.1.90-12) unstable; urgency=low
+
+  * Fix proxy clean up
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.90-12
+
+ -- Danny Jeongseok Seo <s.seo@samsung.com>  Wed, 21 Nov 2012 15:01:48 +0900
+
+net-config (0.1.90-11) unstable; urgency=low
+
+  * Modify deleting notification by new policy
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.90-11
+
+ -- Sanghoon Cho <sanghoon80.cho@samsung.com>  Mon, 19 Nov 2012 16:21:12 +0900
+
+net-config (0.1.90-10) unstable; urgency=low
+
+  * Change vconf key for flight mode
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.90-10
+
+ -- Sanghoon Cho <sanghoon80.cho@samsung.com>  Fri, 16 Nov 2012 13:56:37 +0900
+
+net-config (0.1.90-9) unstable; urgency=low
+
+  * Implement deleting noti before adding one by new notification policy
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.90-9
+
+ -- Sanghoon Cho <sanghoon80.cho@samsung.com>  Thu, 15 Nov 2012 20:19:26 +0900
+
+net-config (0.1.90-8) unstable; urgency=low
+
+  * Check return value
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.90-8
+
+ -- Danny Jeongseok Seo <s.seo@samsung.com>  Sat, 10 Nov 2012 15:09:34 +0900
+
+net-config (0.1.90-7) unstable; urgency=low
+
+  * Smart switching: do not recover Wi-Fi when MAC link failed
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.90-7
+
+ -- Danny Jeongseok Seo <s.seo@samsung.com>  Wed, 07 Nov 2012 00:01:03 +0900
+
+net-config (0.1.90-6) unstable; urgency=low
+
+  * Expand Wi-Fi state to laucn several services according to the Wi-Fi state transition
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.90-6
+
+ -- Danny Jeongseok Seo <s.seo@samsung.com>  Tue, 06 Nov 2012 16:19:40 +0900
+
+net-config (0.1.90-5) unstable; urgency=low
+
+  * Fix post required dependency
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.90-5
+
+ -- Danny Jeongseok Seo <s.seo@samsung.com>  Tue, 06 Nov 2012 13:28:47 +0900
+
+net-config (0.1.90-4) unstable; urgency=low
+
+  * Add mdm features(block network, minimum security)
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.90-4
+
+ -- JaeHyun Kim <jeik01.kim@samsung.com>  Mon, 05 Nov 2012 20:59:18 +0900
+
+net-config (0.1.90-3) unstable; urgency=low
+
+  * Fix memory leaks and several warns
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.90-3
+
+ -- Danny Jeongseok Seo <s.seo@samsung.com>  Fri, 02 Nov 2012 16:34:08 +0900
+
+net-config (0.1.90-2) unstable; urgency=low
+
+  * Revise Smart switching (Samsung proprietary)
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.90-2
+
+ -- Danny Jeongseok Seo <s.seo@samsung.com>  Thu, 01 Nov 2012 11:07:14 +0900
+
+net-config (0.1.90-1) unstable; urgency=low
+
+  * Revise network state machine
+  * Adjust TCP buffer size according to the bearer type
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.90-1
+
+ -- Danny Jeongseok Seo <s.seo@samsung.com>  Wed, 17 Oct 2012 13:47:46 +0900
+
+net-config (0.1.89-24) unstable; urgency=low
+
+  * Fix fail to delete Wi-Fi found notification when Wi-Fi is connected
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.89-24
+
+ -- Sanghoon Cho <sanghoon80.cho@samsung.com>  Wed, 24 Oct 2012 16:58:47 +0900
+
+net-config (0.1.89-23) unstable; urgency=low
+
+  * Fix status conflict with supplicant
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.89-23
+
+ -- Sanghoon Cho <sanghoon80.cho@samsung.com>  Wed, 24 Oct 2012 15:21:38 +0900
+
+net-config (0.1.89-22) unstable; urgency=low
+
+  * Fix not destroy "please wait" popup when request SSID scan
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.89-22
+
+ -- Sanghoon Cho <sanghoon80.cho@samsung.com>  Fri, 19 Oct 2012 15:56:19 +0900
+
+net-config (0.1.89-21) unstable; urgency=low
+
+  * Consolidation of wpa_supplicant
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.89-21
+
+ -- Sanghoon Cho <sanghoon80.cho@samsung.com>  Fri, 12 Oct 2012 14:11:46 +0900
+
+net-config (0.1.89-20) unstable; urgency=low
+
+  * Add add/remove route
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.89-20
+
+ -- JaeHyun Kim <jeik01.kim@samsung.com>  Fri, 12 Oct 2012 20:54:45 +0900
+
+net-config (0.1.89-19) unstable; urgency=low
+
+  * Install license
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.89-19
+
+ -- Danny Jeongseok Seo <s.seo@samsung.com>  Fri, 12 Oct 2012 10:19:28 +0900
+
+net-config (0.1.89-18) unstable; urgency=low
+
+  * Support NTP timeserver
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.89-18
+
+ -- Danny Jeongseok Seo <s.seo@samsung.com>  Thu, 04 Oct 2012 16:59:35 +0900
+
+net-config (0.1.89-17) unstable; urgency=low
+
+  * Modify manifest rule
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.89-17
+
+ -- Sanghoon Cho <sanghoon80.cho@samsung.com>  Mon, 24 Sep 2012 17:59:01 +0900
+
+net-config (0.1.89-16) unstable; urgency=low
+
+  * Fix manifest error
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.89-16
+
+ -- Danny Jeongseok Seo <s.seo@samsung.com>  Fri, 21 Sep 2012 17:06:42 +0900
+
+net-config (0.1.89-15) unstable; urgency=low
+
+  * Apply SMACK manifest
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.89-15
+
+ -- Sanghoon Cho <sanghoon80.cho@samsung.com>  Thu, 20 Sep 2012 13:38:32 +0900
+
+net-config (0.1.89-14) unstable; urgency=low
+
+  * Reorganize wifi gobject declaration
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.89-14
+
+ -- Sanghoon Cho <sanghoon80.cho@samsung.com>  Mon, 10 Sep 2012 13:33:43 +0900
+
+net-config (0.1.89-13) unstable; urgency=low
+
+  * Implement wifi eap-sim/aka
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.89-13
+
+ -- Sanghoon Cho <sanghoon80.cho@samsung.com>  Thu, 30 Aug 2012 16:07:53 +0900
+
+net-config (0.1.89-12) unstable; urgency=low
+
+  * Find hidden network need to get true when the scan is in progress
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.89-12
+
+ -- Danny Jeongseok Seo <s.seo@samsung.com>  Fri, 31 Aug 2012 15:41:34 +0900
+
+net-config (0.1.89-11) unstable; urgency=low
+
+  * Fix SSID scan failure because of background scan
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.89-11
+
+ -- Danny Jeongseok Seo <s.seo@samsung.com>  Thu, 30 Aug 2012 20:34:49 +0900
+
+net-config (0.1.89-10) unstable; urgency=low
+
+  * Revise Wi-Fi background scan
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.89-10
+
+ -- Danny Jeongseok Seo <s.seo@samsung.com>  Thu, 30 Aug 2012 20:11:43 +0900
+
+net-config (0.1.89-9) unstable; urgency=low
+
+  * Revise netdbus and signal fitler handler
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.89-9
+
+ -- Danny Jeongseok Seo <s.seo@samsung.com>  Thu, 30 Aug 2012 19:54:50 +0900
+
+net-config (0.1.89-8) unstable; urgency=low
+
+  * Correct MAC failure, collisions and carrier
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.89-8
+
+ -- Danny Jeongseok Seo <s.seo@samsung.com>  Fri, 24 Aug 2012 19:47:11 +0900
+
+net-config (0.1.89-7) unstable; urgency=low
+
+  * Correct MAC failure, collisions and carrier
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.89-7
+
+ -- Danny Jeongseok Seo <s.seo@samsung.com>  Fri, 24 Aug 2012 17:26:35 +0900
+
+net-config (0.1.89-6) unstable; urgency=low
+
+  * Wi-Fi usability monitoring interval
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.89-6
+
+ -- Danny Jeongseok Seo <s.seo@samsung.com>  Fri, 24 Aug 2012 13:17:04 +0900
+
+net-config (0.1.89-5) unstable; urgency=low
+
+  * Wi-Fi BG scan and specific scan exclusively
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.89-5
+
+ -- Danny Jeongseok Seo <s.seo@samsung.com>  Fri, 24 Aug 2012 10:45:38 +0900
+
+net-config (0.1.89-4) unstable; urgency=low
+
+  * Revise mac failure
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.89-4
+
+ -- Danny Jeongseok Seo <s.seo@samsung.com>  Thu, 23 Aug 2012 10:08:54 +0900
+
+net-config (0.1.89-3) unstable; urgency=low
+
+  * Noise filter for RSSI
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.89-3
+
+ -- Danny Jeongseok Seo <s.seo@samsung.com>  Wed, 22 Aug 2012 13:05:28 +0900
+
+net-config (0.1.89-2) unstable; urgency=low
+
+  * Reduce power consumption in case of LCD off
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.89-2
+
+ -- Danny Jeongseok Seo <s.seo@samsung.com>  Wed, 22 Aug 2012 12:32:28 +0900
+
+net-config (0.1.89-1) unstable; urgency=low
+
+  * First draft of Wi-Fi smart switching
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.89-1
+
+ -- Danny Jeongseok Seo <s.seo@samsung.com>  Tue, 21 Aug 2012 11:00:30 +0900
+
+net-config (0.1.88-6) unstable; urgency=low
+
+  * Add keyfile load/save
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.88-6
+
+ -- Danny Jeongseok Seo <s.seo@samsung.com>  Fri, 17 Aug 2012 17:16:28 +0900
+
+net-config (0.1.88-5) unstable; urgency=low
+
+  * wifi-state notifier
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.88-5
+
+ -- Danny Jeongseok Seo <s.seo@samsung.com>  Fri, 17 Aug 2012 00:24:16 +0900
+
+net-config (0.1.88-4) unstable; urgency=low
+
+  * Re-factor wifi-state, statistics
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.88-4
+
+ -- Danny Jeongseok Seo <s.seo@samsung.com>  Thu, 16 Aug 2012 16:52:47 +0900
+
+net-config (0.1.88-3) unstable; urgency=low
+
+  * Fix build break
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.88-3
+
+ -- Danny Jeongseok Seo <s.seo@samsung.com>  Tue, 14 Aug 2012 13:30:07 +0900
+
+net-config (0.1.88-2) unstable; urgency=low
+
+  * Implement SSID scan for Finding Hidden Network
+  * First draft from Sanghoon Cho, Praveen C
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.88-2
+
+ -- Danny Jeongseok Seo <s.seo@samsung.com>  Sat, 11 Aug 2012 16:30:06 +0900
+
+net-config (0.1.88-1) unstable; urgency=low
+
+  * Revise functions for dbus method call to avoid GPL license issue
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.88-1
+
+ -- JaeHyun Kim <jeik01.kim@samsung.com>  Fri, 10 Aug 2012 19:22:42 +0900
+
+net-config (0.1.87-3) unstable; urgency=low
+
+  * Revise test_device_picker to refer service favorite
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.87-3
+
+ -- Danny Jeongseok Seo <s.seo@samsung.com>  Mon, 06 Aug 2012 19:43:16 +0900
+
+net-config (0.1.87-2) unstable; urgency=low
+
+  * Revise mdm codes to make public source release
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.87-2
+
+ -- Danny Jeongseok Seo <s.seo@samsung.com>  Fri, 03 Aug 2012 18:07:18 +0900
+
+net-config (0.1.87-1) unstable; urgency=low
+
+  * Wi-Fi ANT BAR update (updated)
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.87-1
+
+ -- Danny Jeongseok Seo <s.seo@samsung.com>  Wed, 18 Jul 2012 14:44:47 +0900
+
+net-config (0.1.86-7) unstable; urgency=low
+
+  * Add power on/off completed signal
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.86-7
+
+ -- JaeHyun Kim <jeik01.kim@samsung.com>  Tue, 17 Jul 2012 16:40:10 +0900
+
+net-config (0.1.86-6) unstable; urgency=low
+
+  * Implement to delete Wi-Fi found notification when Wi-Fi is turned off
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.86-6
+
+ -- Sanghoon Cho <sanghoon80.cho@samsung.com>  Mon, 16 Jul 2012 16:40:40 +0900
+
+net-config (0.1.86-5) unstable; urgency=low
+
+  * Fix not showing 3G alert popup
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.86-5
+
+ -- Sanghoon Cho <sanghoon80.cho@samsung.com>  Fri, 13 Jul 2012 21:03:36 +0900
+
+net-config (0.1.86-4) unstable; urgency=low
+
+  * No update RSSI when LCD off
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.86-4
+
+ -- Danny Jeongseok Seo <s.seo@samsung.com>  Wed, 11 Jul 2012 23:19:51 +0900
+
+net-config (0.1.86-3) unstable; urgency=low
+
+  * Fix Wi-Fi state update during Wi-Fi power off
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.86-3
+
+ -- Danny Jeongseok Seo <s.seo@samsung.com>  Sat, 07 Jul 2012 20:53:21 +0900
+
+net-config (0.1.86-2) unstable; urgency=low
+
+  * No device picker during connecting
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.86-2
+
+ -- Danny Jeongseok Seo <s.seo@samsung.com>  Sat, 07 Jul 2012 16:45:40 +0900
+
+net-config (0.1.86-1) unstable; urgency=low
+
+  * Implement to set/get network statistics
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.86-1
+
+ -- Sanghoon Cho <sanghoon80.cho@samsung.com>  Fri, 06 Jul 2012 19:47:02 +0900
+
+net-config (0.1.85-6) unstable; urgency=low
+
+  * Fix wifi indicator update bug
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.85-6
+
+ -- Sanghoon Cho <sanghoon80.cho@samsung.com>  Fri, 06 Jul 2012 16:36:04 +0900
+
+net-config (0.1.85-5) unstable; urgency=low
+
+  * Implement Wi-Fi found notification
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.85-5
+
+ -- Sanghoon Cho <sanghoon80.cho@samsung.com>  Tue, 03 Jul 2012 14:07:28 +0900
+
+net-config (0.1.85-4) unstable; urgency=low
+
+  * Re-factor Wi-Fi indicator
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.85-4
+
+ -- Danny Jeongseok Seo <s.seo@samsung.com>  Tue, 05 Jun 2012 16:28:12 +0900
+
+net-config (0.1.85-3) unstable; urgency=low
+
+  * Remove logging of libnet-client and net-config
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.85-3
+
+ -- JaeHyun Kim <jeik01.kim@samsung.com>  Tue, 12 Jun 2012 19:57:12 +0900
+
+net-config (0.1.85-2) unstable; urgency=low
+
+  * Clean up the useless
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.85-2
+
+ -- Danny Jeongseok Seo <s.seo@samsung.com>  Tue, 05 Jun 2012 10:41:42 +0900
+
+net-config (0.1.85-1) unstable; urgency=low
+
+  * Fix Wi-Fi BG Scan bug for default value
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.85-1
+
+ -- Sanghoon Cho <sanghoon80.cho@samsung.com>  Fri, 01 Jun 2012 15:12:49 +0900
+
+net-config (0.1.84-1) unstable; urgency=low
+
+  * Fix Wi-Fi power state update
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.84-1
+
+ -- Danny Jeongseok Seo <s.seo@samsung.com>  Wed, 30 May 2012 13:34:17 +0900
+
+net-config (0.1.83) unstable; urgency=low
+
+  * Revise emulator support
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.83
+
+ -- Danny Jeongseok Seo <s.seo@samsung.com>  Thu, 17 May 2012 17:55:47 +0900
+
+net-config (0.1.82) unstable; urgency=low
+
+  * Check NULL: Wi-Fi technology state
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.82
+
+ -- Danny Jeongseok Seo <s.seo@samsung.com>  Thu, 17 May 2012 16:20:17 +0900
+
+net-config (0.1.81) unstable; urgency=low
+
+  * Revise private vconf key name
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.81
+
+ -- Danny Jeongseok Seo <s.seo@samsung.com>  Tue, 15 May 2012 13:54:28 +0900
+
+net-config (0.1.80) unstable; urgency=low
+
+  * Revise unnecessary funtions
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.80
+
+ -- Danny Jeongseok Seo <s.seo@samsung.com>  Wed, 09 May 2012 15:13:52 +0900
+
+net-config (0.1.79) unstable; urgency=low
+
+  * Revise net-config signal filter handler
+  * Revise Wi-Fi state management
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.79
+
+ -- Danny Jeongseok Seo <s.seo@samsung.com>  Wed, 09 May 2012 11:41:09 +0900
+
+net-config (0.1.78) unstable; urgency=low
+
+  * Revise ConnMan profile prefix to fit ConnMan 0.78
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.78
+
+ -- Danny Jeongseok Seo <s.seo@samsung.com>  Tue, 08 May 2012 15:55:04 +0900
+
+net-config (0.1.77) unstable; urgency=low
+
+  * Revise net-config to fit Android supplicant
+  * Revise net-config log
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.77
+
+ -- Danny Jeongseok Seo <s.seo@samsung.com>  Tue, 24 Apr 2012 23:08:11 +0900
+
+net-config (0.1.76) unstable; urgency=low
+
+  * Add a vconf key for local MAC address of Wi-Fi device
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.76
+
+ -- JaeHyun Kim <jeik01.kim@samsung.com>  Tue, 17 Apr 2012 10:28:08 +0900
+
+net-config (0.1.75) unstable; urgency=low
+
+  * Modify background scan policy
+  * disallow to request bg scan in case the state is connected and rssi is below level 2
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.75
+
+ -- Sanghoon Cho <sanghoon80.cho@samsung.com>  Fri, 13 Apr 2012 16:37:55 +0900
+
+net-config (0.1.74) unstable; urgency=low
+
+  * Fix Wi-Fi power bug when Wi-Fi direct is on
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.74
+
+ -- Sanghoon Cho <sanghoon80.cho@samsung.com>  Thu, 12 Apr 2012 22:06:27 +0900
+
+net-config (0.1.73) unstable; urgency=low
+
+  * Fix Wi-Fi tethering state bugs
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.73
+
+ -- Danny Jeongseok Seo <s.seo@samsung.com>  Mon, 02 Apr 2012 17:27:06 +0900
+
+net-config (0.1.72) unstable; urgency=low
+
+  * Fix emulator proxy setting
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.72
+
+ -- Danny Jeongseok Seo <s.seo@samsung.com>  Thu, 29 Mar 2012 10:45:15 +0900
+
+net-config (0.1.71) unstable; urgency=low
+
+  * Enable DBus auto-activation
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.71
+
+ -- Danny Jeongseok Seo <s.seo@samsung.com>  Tue, 27 Mar 2012 14:01:40 +0900
+
+net-config (0.1.70) unstable; urgency=low
+
+  * Implement Wi-Fi device picker service
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.70
+
+ -- Danny Jeongseok Seo <s.seo@samsung.com>  Fri, 23 Mar 2012 19:28:01 +0900
+
+net-config (0.1.69) unstable; urgency=low
+
+  * Change alert popup name to net-popup
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.69
+
+ -- Sunkey Lee <yuvjjang.lee@samsung.com>  Fri, 16 Mar 2012 10:21:53 +0900
+
+net-config (0.1.68) unstable; urgency=low
+
+  * Revise Network State update DBus interface name (object path)
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.68
+
+ -- Danny Jeongseok Seo <s.seo@samsung.com>  Thu, 15 Mar 2012 13:33:17 +0900
+
+net-config (0.1.67) unstable; urgency=low
+
+  * Write update default connection information
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.67
+
+ -- Danny Jeongseok Seo <s.seo@samsung.com>  Wed, 14 Mar 2012 21:31:57 +0900
+
+net-config (0.1.66) unstable; urgency=low
+
+  * Write initial Network Configuration Module based on exist sonet
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.66
+
+ -- Danny Jeongseok Seo <s.seo@samsung.com>  Wed, 14 Mar 2012 19:00:26 +0900
+
+net-config (0.1.65) unstable; urgency=low
+
+  * Fix network status update
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.65
+
+ -- Danny Jeongseok Seo <s.seo@samsung.com>  Thu, 08 Mar 2012 22:17:24 +0900
+
+net-config (0.1.64) unstable; urgency=low
+
+  * Fix vconf memory backend to be installed
+  * Git: magnolia/framework/connectivity/net-config
+  * Tag: net-config_0.1.64
+
+ -- Danny Jeongseok Seo <s.seo@samsung.com>  Tue, 06 Mar 2012 21:11:08 +0900
+
+sonet (0.1.0) unstable; urgency=low
+
+  * Initial Release
+
+ -- DongHoo Park <donghoo.park@samsung.com>  Tue, 23 Aug 2011 11:22:04 +0900

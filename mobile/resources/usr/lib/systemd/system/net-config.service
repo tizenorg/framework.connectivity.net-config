@@ -1,0 +1,10 @@
+[Unit]
+Description=net config service
+After=syslog.target
+
+[Service]
+Type=notify
+ExecStart=/usr/sbin/net-config --nofork
+
+[Install]
+WantedBy=multi-user.target

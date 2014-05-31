@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<node name="/net/netconfig/wifi">
+	<interface name="net.netconfig.wifi">
+		<method name="LoadDriver">
+		</method>
+		<method name="RemoveDriver">
+		</method>
+		<method name="LaunchDirect">
+		</method>
+		<method name="SetBgscan">
+			<arg type="u" name="ScanMode" direction="in"/>
+		</method>
+		<method name="RequestSpecificScan">
+			<arg type="s" name="SSID" direction="in"/>
+		</method>
+		<method name="CreateConfig">
+			<arg type="a{ss}" name="Fields" direction="in"/>
+		</method>
+		<method name="DeleteConfig">
+			<arg type="s" name="Profile" direction="in"/>
+		</method>
+		<method name="GetSimImsi">
+			<annotation name="org.freedesktop.DBus.GLib.Async" value="yes"/>
+				<arg  type="s" name="imsi_data" direction="out" />
+		</method>
+		<method name="ReqSimAuth">
+			<arg  type="ay" name="rand_data" direction="in" />
+			<arg  type="b" name="result" direction="out" />
+		</method>
+		<method name="ReqAkaAuth">
+			<arg  type="ay" name="rand_data" direction="in" />
+			<arg  type="ay" name="autn_data" direction="in" />
+			<arg  type="b" name="result" direction="out" />
+		</method>
+		<method name="GetSimAuth">
+			<annotation name="org.freedesktop.DBus.GLib.Async" value="yes"/>
+				<arg  type="ay" name="auth_data" direction="out" />
+		</method>
+		<method name="GetAkaAuth">
+			<annotation name="org.freedesktop.DBus.GLib.Async" value="yes"/>
+				<arg  type="ay" name="auth_data" direction="out" />
+		</method>
+		<signal name="DriverLoaded">
+			<arg name="mac" type="s"/>
+		</signal>
+		<signal name="PowerOn">
+			<arg name="error" type="s"/>
+		</signal>
+	</interface>
+	<interface name="net.connman.Agent">
+		<method name="SetField">
+			<arg type="a{ss}" name="Field" direction="in"/>
+		</method>
+		<method name="RequestInput">
+		<annotation name="org.freedesktop.DBus.GLib.Async" value="true"/>
+			<arg type="o" name="Path" direction="in"/>
+			<arg type="a{sv}" name="Fields" direction="in"/>
+			<arg type="a{sv}" name="OutFields" direction="out"/>
+		</method>
+	</interface>
+</node>

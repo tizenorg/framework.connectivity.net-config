@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<node name="/net/netconfig/network_statistics">
+	<interface name="net.netconfig.network_statistics">
+		<method name="GetWifiTotalTxBytes">
+			<arg  type="t" name="total_bytes" direction="out" />
+		</method>
+		<method name="GetWifiTotalRxBytes">
+			<arg  type="t" name="total_bytes" direction="out" />
+		</method>
+		<method name="GetWifiLastTxBytes">
+			<arg  type="t" name="last_bytes" direction="out" />
+		</method>
+		<method name="GetWifiLastRxBytes">
+			<arg  type="t" name="last_bytes" direction="out" />
+		</method>
+		<method name="ResetCellularTotalTxBytes">
+		</method>
+		<method name="ResetCellularTotalRxBytes">
+		</method>
+		<method name="ResetCellularLastTxBytes">
+		</method>
+		<method name="ResetCellularLastRxBytes">
+		</method>
+		<method name="ResetWifiTotalTxBytes">
+		</method>
+		<method name="ResetWifiTotalRxBytes">
+		</method>
+		<method name="ResetWifiLastTxBytes">
+		</method>
+		<method name="ResetWifiLastRxBytes">
+		</method>
+	</interface>
+</node>

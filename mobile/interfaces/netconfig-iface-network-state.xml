@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<node name="/net/netconfig/network">
+	<interface name="net.netconfig.network">
+		<method name="AddRoute">
+			<arg  type="s" name="ip_addr" direction="in" />
+			<arg  type="s" name="netmask" direction="in" />
+			<arg  type="s" name="interface" direction="in" />
+			<arg  type="b" name="result" direction="out" />
+		</method>
+		<method name="RemoveRoute">
+			<arg  type="s" name="ip_addr" direction="in" />
+			<arg  type="s" name="netmask" direction="in" />
+			<arg  type="s" name="interface" direction="in" />
+			<arg  type="b" name="result" direction="out" />
+		</method>
+	</interface>
+</node>
