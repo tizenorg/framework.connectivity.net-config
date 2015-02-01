@@ -1,69 +1,73 @@
-Name:       net-config
-Summary:    TIZEN Network Configuration Module
-Version:    0.1.90_27
-Release:    1
-Group:      System/Network
-License:    Apache License Version 2.0
-Source0:    %{name}-%{version}.tar.gz
-
-%if %{_repository} == "wearable"
-BuildRequires:	cmake
+Name:		net-config
+Summary:	TIZEN Network Configuration service
+Version:	1.0.71
+Release:	1
+Group:		System/Network
+License:	Apache License Version 2.0
+Source0:	%{name}-%{version}.tar.gz
 BuildRequires:	pkgconfig(dlog)
 BuildRequires:	pkgconfig(tapi)
 BuildRequires:	pkgconfig(vconf)
 BuildRequires:	pkgconfig(appsvc)
+BuildRequires:	pkgconfig(journal)
 BuildRequires:	pkgconfig(glib-2.0)
 BuildRequires:	pkgconfig(dbus-glib-1)
 BuildRequires:	pkgconfig(notification)
 BuildRequires:	pkgconfig(alarm-service)
 BuildRequires:	pkgconfig(syspopup-caller)
-BuildRequires:  pkgconfig(capi-appfw-application)
-Requires:		sed
-Requires:		systemd
+BuildRequires:	pkgconfig(capi-system-info)
+BuildRequires:	pkgconfig(capi-appfw-application)
+BuildRequires:	pkgconfig(capi-network-wifi-direct)
+BuildRequires:	cmake
+BuildRequires:	model-build-features
 Requires:		vconf
+Requires:		connman
+Requires:		systemd
+Requires:		/bin/cp
+Requires:		/bin/mv
+Requires:		/bin/rm
+Requires:		/bin/cat
+Requires:		/bin/sed
+Requires:		/bin/tar
+Requires:		/bin/mkdir
+Requires:		/bin/touch
+Requires:		/sbin/route
+Requires:		/bin/netstat
+Requires:		/sbin/ifconfig
+Requires:		/usr/bin/xargs
+Requires:		/usr/bin/vconftool
 Requires(post):		systemd
 Requires(post):		vconf
 Requires(preun):	systemd
 Requires(postun):	systemd
-%else
-BuildRequires:  cmake
-BuildRequires:  pkgconfig(glib-2.0)
-BuildRequires:  pkgconfig(dbus-glib-1)
-BuildRequires:  pkgconfig(dlog)
-BuildRequires:  pkgconfig(vconf)
-BuildRequires:  pkgconfig(wifi-direct)
-BuildRequires:  pkgconfig(tapi)
-BuildRequires:  pkgconfig(syspopup-caller)
-Requires(post): /usr/bin/vconftool
-BuildRequires:    pkgconfig(libsystemd-daemon)
-%{?systemd_requires}
-%endif
 
 %description
-TIZEN Network Configuration Module
+TIZEN Network Configuration service
 
 %prep
 %setup -q
 
 %build
-%if %{_repository} == "wearable"
-cd wearable
-%cmake -DCMAKE_INSTALL_PREFIX=%{_prefix} \
-%if 0%{?sec_product_feature_wlan_concurrent_mode} == 1
+cmake -DCMAKE_INSTALL_PREFIX=%{_prefix} \
+	-DTIZEN_WLAN_PASSPOINT=1 \
+%if 0%{?model_build_feature_wlan_concurrent_mode}
 	-DWLAN_CONCURRENT_MODE=1 \
 %endif
-
-make %{?_smp_mflags}
-%else
-cd mobile
-cmake . -DCMAKE_INSTALL_PREFIX=%{_prefix}
-
-make %{?_smp_mflags}
+%if ! 0%{?model_build_feature_wlan_p2p_disable}
+	-DTIZEN_P2P_ENABLE=1 \
 %endif
+%if ! 0%{?model_build_feature_network_tethering_disable}
+	-DTIZEN_TETHERING_ENABLE=1 \
+%endif
+%if 0%{?model_build_feature_wlan_wearable} == 1
+	-DTIZEN_WEARABLE=1 \
+%endif
+	.
+
+make %{?_smp_mflags}
+
 
 %install
-%if %{_repository} == "wearable"
-cd wearable
 %make_install
 
 #Systemd service file
@@ -92,41 +96,27 @@ sqlite3 %{buildroot}/opt/dbspace/.wifi_offload.db < resources/usr/share/wifi_off
 #cp resources/etc/dbus-1/system.d/net-config.conf %{buildroot}%{_sysconfdir}/dbus-1/system.d/net-config.conf
 
 #log dump
-mkdir -p %{buildroot}/opt/etc/dump.d/module.d
+mkdir -p %{buildroot}/opt/etc/dump.d/module.d/
 cp resources/opt/etc/dump.d/module.d/network_log_dump.sh %{buildroot}/opt/etc/dump.d/module.d/network_log_dump.sh
+mkdir -p %{buildroot}/opt/var/lib/net-config/
+cp resources/opt/etc/dump.d/module.d/network_log_dump.sh %{buildroot}/opt/var/lib/net-config/network_log_dump.sh
+
+%if 0%{?model_build_feature_wlan_wearable} == 1
+#softreset scripts
+mkdir -p %{buildroot}/usr/system/RestoreDir/softreset_prepare
+cp resources/usr/system/RestoreDir/softreset_prepare/network_reset_pre.sh %{buildroot}/usr/system/RestoreDir/softreset_prepare/network_reset_pre.sh
+
+mkdir -p %{buildroot}/usr/system/RestoreDir/softreset_post
+cp resources/usr/system/RestoreDir/softreset_post/network_reset_post.sh %{buildroot}/usr/system/RestoreDir/softreset_post/network_reset_post.sh
+%endif
 
 #License
 mkdir -p %{buildroot}%{_datadir}/license
 cp LICENSE %{buildroot}%{_datadir}/license/net-config
 cat LICENSE-FLORA >> %{buildroot}%{_datadir}/license/net-config
-%else
-cd mobile
-%make_install
-
-mkdir -p %{buildroot}%{_datadir}/dbus-1/services
-cp resources/usr/share/dbus-1/services/net.netconfig.service %{buildroot}%{_datadir}/dbus-1/services/net.netconfig.service
-mkdir -p %{buildroot}%{_sysconfdir}/dbus-1/system.d
-cp resources/etc/dbus-1/system.d/net-config.conf %{buildroot}%{_sysconfdir}/dbus-1/system.d/net-config.conf
-mkdir -p %{buildroot}/opt/etc
-cp resources/opt/etc/resolv.conf %{buildroot}/opt/etc/resolv.conf
-
-# Systemd service file
-mkdir -p %{buildroot}%{_libdir}/systemd/system/
-cp resources/usr/lib/systemd/system/net-config.service %{buildroot}%{_libdir}/systemd/system/net-config.service
-mkdir -p %{buildroot}%{_libdir}/systemd/system/network.target.wants/
-ln -s ../net-config.service %{buildroot}%{_libdir}/systemd/system/network.target.wants/net-config.service
-
-#License
-mkdir -p %{buildroot}%{_datadir}/license
-cp LICENSE.APLv2 %{buildroot}%{_datadir}/license/net-config
-
-#Rule file
-mkdir -p %{buildroot}/opt/etc/smack/accesses.d
-cp net-config.rule %{buildroot}/opt/etc/smack/accesses.d
-%endif
 
 %post
-%if %{_repository} == "wearable"
+
 vconftool set -t int memory/dnet/state 0 -i -s system::vconf_network
 vconftool set -t int memory/wifi/state 0 -i -s system::vconf_network
 vconftool set -t int memory/wifi/transfer_state 0 -i -s system::vconf_network
@@ -168,66 +158,27 @@ vconftool set -t int file/private/wifi/wifi_off_by_emergency 0 -s system::vconf_
 #Wi-Fi sleep policy
 vconftool set -t int file/private/wifi/sleep_policy 0 -g 6519 -s system::vconf_setting
 
+%if 0%{?model_build_feature_wlan_wearable} == 1
+#Wearable use Wi-Fi
+vconftool set -t int db/private/wifi/wearable_wifi_use 0 -g 6519 -s net-config
+%endif
+
+#Network logs
+mkdir -p /opt/usr/data/network
+chmod 755 /opt/usr/data/network
+
 #systemctl daemon-reload
 #systemctl restart net-config.service
 
-%else
-vconftool set -t int memory/dnet/state 0 -i
-vconftool set -t int memory/wifi/state 0 -i
-vconftool set -t int memory/wifi/transfer_state 0 -i
-vconftool set -t int memory/wifi/strength 0 -i
-vconftool set -t int memory/wifi/bgscan_mode 0 -i
-
-vconftool set -t int memory/dnet/wifi 0 -i
-vconftool set -t int memory/dnet/network_config 0 -i
-vconftool set -t int memory/dnet/status 0 -i
-vconftool set -t string memory/dnet/ip "" -i
-vconftool set -t string memory/dnet/proxy "" -i
-
-vconftool set -t string memory/wifi/connected_ap_name "" -i
-
-vconftool set -t string db/wifi/bssid_address ""
-
-#Default Call Statistics
-vconftool set -t int db/dnet/statistics/cellular/totalsnt "0"
-vconftool set -t int db/dnet/statistics/cellular/totalrcv "0"
-vconftool set -t int db/dnet/statistics/cellular/lastsnt "0"
-vconftool set -t int db/dnet/statistics/cellular/lastrcv "0"
-vconftool set -t int db/dnet/statistics/wifi/totalsnt "0"
-vconftool set -t int db/dnet/statistics/wifi/totalrcv "0"
-vconftool set -t int db/dnet/statistics/wifi/lastsnt "0"
-vconftool set -t int db/dnet/statistics/wifi/lastrcv "0"
-
-vconftool set -t int file/private/wifi/last_power_state "0"
-
-systemctl daemon-reload
-if [ "$1" == "1" ]; then
-    systemctl restart net-config.service
-fi
-%endif
-
-%if %{_repository} == "wearable"
 %preun
 #systemctl stop net-config.service
 
 %postun
 #systemctl daemon-reload
-%else
-%preun
-if [ "$1" == "0" ]; then
-    systemctl stop net-config.service
-fi
 
-%postun
-systemctl daemon-reload
-if [ "$1" == "1" ]; then
-    systemctl restart net-config.service
-fi
-%endif
 
 %files
-%if %{_repository} == "wearable"
-%manifest wearable/net-config.manifest
+%manifest net-config.manifest
 %attr(500,root,root) %{_sbindir}/*
 %attr(644,root,root) %{_sysconfdir}/resolv.conf
 %attr(400,root,root) %{_sysconfdir}/wifi/ccode.conf
@@ -239,15 +190,10 @@ fi
 %{_datadir}/license/net-config
 %attr(660,root,root) /opt/dbspace/.wifi_offload.db
 %attr(664,root,root) /opt/dbspace/.wifi_offload.db-journal
-%attr(544,root,root) /opt/etc/dump.d/module.d/network_log_dump.sh
-%else
-%manifest mobile/net-config.manifest
-/opt/etc/smack/accesses.d/net-config.rule
-%{_sbindir}/*
-%attr(644,root,root) /opt/etc/resolv.conf
-%{_datadir}/dbus-1/services/*
-%{_sysconfdir}/dbus-1/system.d/*
-%{_libdir}/systemd/system/net-config.service
-%{_libdir}/systemd/system/network.target.wants/net-config.service
-%{_datadir}/license/net-config
+%attr(500,root,root) /opt/etc/dump.d/module.d/network_log_dump.sh
+%attr(500,root,root) /opt/var/lib/net-config/network_log_dump.sh
+
+%if 0%{?model_build_feature_wlan_wearable} == 1
+%attr(700,root,root) /usr/system/RestoreDir/softreset_prepare/network_reset_pre.sh
+%attr(700,root,root) /usr/system/RestoreDir/softreset_post/network_reset_post.sh
 %endif
