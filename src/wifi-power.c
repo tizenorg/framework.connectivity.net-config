@@ -17,245 +17,201 @@
  *
  */
 
-#include <stdio.h>
-#include <unistd.h>
+#include <errno.h>
 #include <vconf.h>
 #include <vconf-keys.h>
+#include <ITapiSim.h>
+#include <TapiUtility.h>
+
+#if defined TIZEN_P2P_ENABLE && !defined WLAN_CONCURRENT_MODE
+#if defined TIZEN_P2P_ENABLE
 #include <wifi-direct.h>
+#endif
+#endif
 
 #include "log.h"
-#include "wifi.h"
 #include "util.h"
 #include "netdbus.h"
 #include "neterror.h"
-#include "netconfig.h"
-#include "emulator.h"
-#include "network-statistics.h"
+#include "wifi-wps.h"
+#include "wifi-power.h"
 #include "wifi-state.h"
-#include "wifi-ssid-scan.h"
+#include "wifi-tel-intf.h"
+#include "netsupplicant.h"
+#include "network-state.h"
+#include "wifi-firmware.h"
 #include "wifi-background-scan.h"
+
 #include "mdm-private.h"
 
-gboolean netconfig_iface_wifi_load_driver(NetconfigWifi *wifi, GError **error);
-gboolean netconfig_iface_wifi_remove_driver(NetconfigWifi *wifi, GError **error);
+#define WLAN_SUPPLICANT_SCRIPT		"/usr/sbin/wpa_supp.sh"
+#define P2P_SUPPLICANT_SCRIPT		"/usr/sbin/p2p_supp.sh"
+#define VCONF_WIFI_OFF_STATE_BY_AIRPLANE \
+			"file/private/wifi/wifi_off_by_airplane"
+#define VCONF_WIFI_OFF_STATE_BY_RESTRICTED \
+			"file/private/wifi/wifi_off_by_restricted"
+#define VCONF_WIFI_OFF_STATE_BY_EMERGENCY \
+			"file/private/wifi/wifi_off_by_emergency"
 
-#include "netconfig-iface-wifi-glue.h"
+#if defined TIZEN_WEARABLE
+#define VCONF_WIFI_WEARABLE_WIFI_USE \
+			"db/private/wifi/wearable_wifi_use"
+#endif
 
-#define WLAN_DRIVER_SCRIPT "/usr/bin/wlan.sh"
+static gboolean connman_wifi_technology_state = FALSE;
 
-#define PROP_DEFAULT		FALSE
-#define PROP_DEFAULT_STR	NULL
+static gboolean wifi_firmware_recovery_mode = FALSE;
 
-enum {
-	PROP_O,
-	PROP_WIFI_CONN,
-	PROP_WIFI_PATH,
-};
+static int airplane_mode = 0;
 
-enum {
-	SIG_WIFI_DRIVER,
-	SIG_LAST
-};
-
-struct NetconfigWifiClass {
-	GObjectClass parent;
-
-	/* method and signals */
-	void (*driver_loaded) (NetconfigWifi *wifi, gchar *mac);
-};
-
-struct NetconfigWifi {
-	GObject parent;
-
-	/* member variable */
-	DBusGConnection *conn;
-	gchar *path;
-};
-
-static guint32 signals[SIG_LAST] = { 0, };
-
-G_DEFINE_TYPE(NetconfigWifi, netconfig_wifi, G_TYPE_OBJECT);
-
-
-static void __netconfig_wifi_gobject_get_property(GObject *object, guint prop_id,
-		GValue *value, GParamSpec *pspec)
+static void __netconfig_wifi_technology_reply(DBusPendingCall *call, void *data)
 {
-	return;
-}
+	DBusMessage *message;
 
-static void __netconfig_wifi_gobject_set_property(GObject *object, guint prop_id,
-		const GValue *value, GParamSpec *pspec)
-{
-	NetconfigWifi *wifi = NETCONFIG_WIFI(object);
+	message = dbus_pending_call_steal_reply(call);
 
-	switch (prop_id) {
-	case PROP_WIFI_CONN:
-	{
-		wifi->conn = g_value_get_boxed(value);
-		INFO("wifi(%p) set conn(%p)", wifi, wifi->conn);
-		break;
+	if (dbus_message_get_type(message) == DBUS_MESSAGE_TYPE_ERROR) {
+		ERR("%s", dbus_message_get_error_name(message));
+
+		if (dbus_message_is_error(message,
+				CONNMAN_ERROR_INTERFACE ".AlreadyEnabled") == TRUE)
+			netconfig_wifi_update_power_state(TRUE);
+		else if (dbus_message_is_error(message,
+				CONNMAN_ERROR_INTERFACE ".AlreadyDisabled") == TRUE)
+			netconfig_wifi_update_power_state(FALSE);
+	} else {
+		DBG("Successfully requested");
 	}
 
-	case PROP_WIFI_PATH:
-	{
-		if (wifi->path)
-			g_free(wifi->path);
+	dbus_message_unref(message);
+	dbus_pending_call_unref(call);
+}
 
-		wifi->path = g_value_dup_string(value);
-		INFO("wifi(%p) path(%s)", wifi, wifi->path);
+static gboolean __netconfig_is_wifi_restricted(void)
+{
+	int restricted_mode = 0;
 
-		break;
+	vconf_get_bool(VCONFKEY_SETAPPL_NETWORK_RESTRICT_MODE, &restricted_mode);
+	if (restricted_mode != 0) {
+		DBG("network restricted mode[%d]", restricted_mode);
+		return TRUE;
 	}
 
-	default:
-		G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
-	}
+	return FALSE;
 }
 
-static void netconfig_wifi_init(NetconfigWifi *wifi)
+static int __netconfig_wifi_connman_technology(gboolean enable)
 {
-	DBG("wifi initialize");
+	gboolean reply = FALSE;
+	char key[] = "string:Powered";
+	char value_enable[] = "variant:boolean:true";
+	char value_disable[] = "variant:boolean:false";
+	char *param_array[] = { NULL, NULL, NULL };
 
-	wifi->conn = NULL;
-	wifi->path = g_strdup(PROP_DEFAULT_STR);
-}
+	if (connman_wifi_technology_state == enable)
+		return -EALREADY;
 
-static void netconfig_wifi_class_init(NetconfigWifiClass *klass)
-{
-	GObjectClass *object_class = G_OBJECT_CLASS(klass);
+	param_array[0] = key;
+	if (enable == TRUE)
+		param_array[1] = value_enable;
+	else
+		param_array[1] = value_disable;
 
-	DBG("class initialize");
+	reply = netconfig_invoke_dbus_method_nonblock(CONNMAN_SERVICE,
+			CONNMAN_WIFI_TECHNOLOGY_PREFIX, CONNMAN_TECHNOLOGY_INTERFACE,
+			"SetProperty", param_array, __netconfig_wifi_technology_reply);
 
-	object_class->get_property = __netconfig_wifi_gobject_get_property;
-	object_class->set_property = __netconfig_wifi_gobject_set_property;
-
-	/* DBus register */
-	dbus_g_object_type_install_info(NETCONFIG_TYPE_WIFI,
-			&dbus_glib_netconfig_iface_wifi_object_info);
-
-	/* property */
-	g_object_class_install_property(object_class, PROP_WIFI_CONN,
-			g_param_spec_boxed("conn", "CONNECTION", "DBus connection",
-				DBUS_TYPE_G_CONNECTION,
-				G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY));
-
-	g_object_class_install_property(object_class, PROP_WIFI_PATH,
-			g_param_spec_string("path", "PATH", "Object Path",
-				PROP_DEFAULT_STR,
-				G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY));
-
-	/* signal */
-	signals[SIG_WIFI_DRIVER] = g_signal_new("driver-loaded",
-			G_OBJECT_CLASS_TYPE(klass),
-			G_SIGNAL_RUN_LAST,
-			G_STRUCT_OFFSET(NetconfigWifiClass,
-				driver_loaded),
-			NULL, NULL,
-			g_cclosure_marshal_VOID__STRING,
-			G_TYPE_NONE, 1, G_TYPE_STRING);
-}
-
-
-static gboolean __netconfig_wifi_enable_technology(void)
-{
-	DBusMessage *reply = NULL;
-	char path[DBUS_PATH_MAX_BUFLEN] = "/";
-	char param1[] = "string:wifi";
-	char *param_array[] = {NULL, NULL};
-
-	param_array[0] = param1;
-
-	reply = netconfig_invoke_dbus_method(CONNMAN_SERVICE, path,
-			CONNMAN_MANAGER_INTERFACE, "EnableTechnology", param_array);
-
-	if (reply == NULL) {
-		ERR("Error! Request failed");
-		return FALSE;
+	if (reply != TRUE) {
+		ERR("Fail to set technology %s", enable == TRUE ? "enable" : "disable");
+		return -ESRCH;
 	}
 
-	dbus_message_unref(reply);
+	/* If Wi-Fi powered off,
+	 * Do not remove Wi-Fi driver until ConnMan technology state updated
+	 */
+	if (enable == TRUE)
+		connman_wifi_technology_state = enable;
 
-	return TRUE;
+	/* To be keep safe, early disable Wi-Fi tech state */
+	if (enable != TRUE)
+		netconfig_wifi_state_set_technology_state(NETCONFIG_WIFI_TECH_WPS_ONLY);
+
+	return 0;
 }
 
-static gboolean __netconfig_wifi_disable_technology(void)
+static int __netconfig_wifi_supplicant(gboolean enable)
 {
-	DBusMessage *reply = NULL;
-	char path[DBUS_PATH_MAX_BUFLEN] = "/";
-	char param1[] = "string:wifi";
-	char *param_array[] = {NULL, NULL};
+	int rv = 0;
+	const char *path = WLAN_SUPPLICANT_SCRIPT;
+	char *const args_enable[] = { "/usr/sbin/wpa_supp.sh", "start", NULL };
+	char *const args_disable[] = { "/usr/sbin/wpa_supp.sh", "stop", NULL };
+	char *const envs[] = { NULL };
+	static gboolean enabled = FALSE;
 
-	param_array[0] = param1;
+	if (enabled == enable)
+		return -EALREADY;
 
-	reply = netconfig_invoke_dbus_method(CONNMAN_SERVICE, path,
-			CONNMAN_MANAGER_INTERFACE, "DisableTechnology", param_array);
+	if (enable == TRUE)
+		rv = netconfig_execute_file(path, args_enable, envs);
+	else
+		rv = netconfig_execute_file(path, args_disable, envs);
+	if (rv < 0)
+		return -EIO;
 
-	if (reply == NULL) {
-		ERR("Error! Request failed");
-		return FALSE;
-	}
+	DBG("wpa_supplicant %s", enable == TRUE ? "started" : "stopped");
 
-	dbus_message_unref(reply);
+	enabled = enable;
 
-	return TRUE;
+	return 0;
 }
 
-static gboolean __netconfig_wifi_load_driver(void)
+static int __netconfig_p2p_supplicant(gboolean enable)
 {
-	gboolean rv = FALSE;
-	const char *path = WLAN_DRIVER_SCRIPT;
-	char *const args[] = { "wlan.sh", "start" };
+	int rv = 0;
+	const char *path = P2P_SUPPLICANT_SCRIPT;
+	char *const args_enable[] = { P2P_SUPPLICANT_SCRIPT, "start", NULL };
+	char *const args_disable[] = { P2P_SUPPLICANT_SCRIPT, "stop", NULL };
 	char *const envs[] = { NULL };
 
-	if (netconfig_emulator_is_emulated() == TRUE)
-		return rv;
+	if (enable == TRUE)
+		rv = netconfig_execute_file(path, args_enable, envs);
+	else
+		rv = netconfig_execute_file(path, args_disable, envs);
+	if (rv < 0)
+		return -EIO;
 
-	rv = netconfig_execute_file(path, args, envs);
-	if (rv != TRUE) {
-		DBG("Failed to load wireless device driver");
-		return FALSE;
-	}
+	DBG("p2p_supplicant %s", enable == TRUE ? "started" : "stopped");
 
-	DBG("Successfully loaded wireless device drivers");
-	return TRUE;
+	return 0;
 }
 
-static gboolean __netconfig_wifi_remove_driver(void)
+void netconfig_wifi_recover_firmware(void)
 {
-	gboolean rv = FALSE;
-	const char *path = WLAN_DRIVER_SCRIPT;
-	char *const args[] = { "wlan.sh", "stop" };
-	char *const env[] = { NULL };
+	wifi_firmware_recovery_mode = TRUE;
 
-	if (netconfig_emulator_is_emulated() == TRUE)
-		return rv;
+	netconfig_wifi_bgscan_stop();
 
-	rv = netconfig_execute_file(path, args, env);
-	if (rv != TRUE) {
-		DBG("Failed to remove(unload) driver for wireless device");
-		return FALSE;
-	}
-
-	DBG("Successfully removed(unloaded) wireless driver");
-	return TRUE;
+	netconfig_wifi_off();
 }
 
-static gboolean __netconfig_wifi_try_to_load_driver(void);
-static gboolean __netconfig_wifi_try_to_remove_driver(void);
-
+#if defined TIZEN_P2P_ENABLE && !defined WLAN_CONCURRENT_MODE
 static void __netconfig_wifi_direct_state_cb(int error_code,
 		wifi_direct_device_state_e device_state, void *user_data)
 {
+	int err;
+
 	wifi_direct_unset_device_state_changed_cb();
 	wifi_direct_deinitialize();
 
 	if (device_state == WIFI_DIRECT_DEVICE_STATE_DEACTIVATED) {
-		__netconfig_wifi_try_to_load_driver();
-
-		return;
+		err = netconfig_wifi_on();
+		if (err < 0) {
+			if (err == -EALREADY)
+				netconfig_wifi_update_power_state(TRUE);
+			else
+				netconfig_wifi_notify_power_failed();
+		}
 	}
-
-	/* TODO: error report */
 }
 
 static gboolean __netconfig_wifi_direct_power_off(void)
@@ -274,285 +230,730 @@ static gboolean __netconfig_wifi_direct_power_off(void)
 
 	return TRUE;
 }
+#endif
 
-static gboolean __netconfig_wifi_try_to_load_driver(void)
+static int __netconfig_wifi_try_to_load_driver_and_supplicant(void)
 {
-	int count = 0;
-	gchar *wifi_tech_state = NULL;
+	int err = 0;
+	enum netconfig_wifi_tech_state wifi_tech_state;
 
-	if (netconfig_is_wifi_allowed() != TRUE)
-		return FALSE;
+	wifi_tech_state = netconfig_wifi_state_get_technology_state();
+	if (wifi_tech_state > NETCONFIG_WIFI_TECH_OFF)
+		return -EALREADY;
+
+	err = __netconfig_wifi_supplicant(TRUE);
+	if (err < 0 && err != -EALREADY)
+		return err;
+
+	err = netconfig_wifi_firmware(NETCONFIG_WIFI_STA, TRUE);
+	if (err < 0 && err != -EALREADY) {
+		__netconfig_wifi_supplicant(FALSE);
+		return err;
+	}
+
+	netconfig_wifi_state_set_technology_state(NETCONFIG_WIFI_TECH_WPS_ONLY);
+
+	return 0;
+}
+
+static int __netconfig_wifi_try_to_remove_driver_and_supplicant(void)
+{
+	int err = 0;
+
+	if (wifi_firmware_recovery_mode != TRUE &&
+					netconfig_wifi_is_wps_enabled() == TRUE) {
+		DBG("Wi-Fi WPS mode");
+		return 0;
+	}
+
+	err = netconfig_wifi_firmware(NETCONFIG_WIFI_STA, FALSE);
+	if (err < 0 && err != -EALREADY)
+		return err;
+
+	err = __netconfig_wifi_supplicant(FALSE);
+	if (err < 0 && err != -EALREADY)
+		return err;
+
+	netconfig_wifi_state_set_technology_state(NETCONFIG_WIFI_TECH_OFF);
+
+	if (wifi_firmware_recovery_mode == TRUE) {
+		if (netconfig_wifi_on() < 0)
+			ERR("Failed to recover Wi-Fi firmware");
+
+		wifi_firmware_recovery_mode = FALSE;
+	}
+
+	return 0;
+}
+
+int netconfig_wifi_driver_and_supplicant(gboolean enable)
+{
+	/* There are 3 thumb rules for Wi-Fi power management
+	 *   1. Do not make exposed API to control wpa_supplicant and driver directly.
+	 *      It probably breaks ConnMan technology operation.
+	 *
+	 *   2. Do not remove driver and wpa_supplicant if ConnMan already enabled.
+	 *      It breaks ConnMan technology operation.
+	 *
+	 *   3. Final the best rule: make it as simple as possible.
+	 *      Simple code enables easy maintenance and reduces logical errors.
+	 */
+	if (enable == TRUE)
+		return __netconfig_wifi_try_to_load_driver_and_supplicant();
+	else {
+		if (connman_wifi_technology_state == TRUE)
+			return -ENOSYS;
+
+		return __netconfig_wifi_try_to_remove_driver_and_supplicant();
+	}
+}
+
+void netconfig_wifi_disable_technology_state_by_only_connman_signal(void)
+{
+	/* Important: it's only done by ConnMan technology signal update */
+	connman_wifi_technology_state = FALSE;
+}
+
+int netconfig_wifi_on(void)
+{
+	int err = 0;
+	enum netconfig_wifi_tech_state wifi_tech_state;
+
+	wifi_tech_state = netconfig_wifi_state_get_technology_state();
+	if (wifi_tech_state >= NETCONFIG_WIFI_TECH_POWERED)
+		return -EALREADY;
+
+	if (netconfig_is_wifi_allowed() != TRUE) {
+		ERR("MDM: Wi-Fi disabled");
+		netconfig_send_message_to_net_popup("Network connection popup",
+						"wifi restricted", "popup", NULL);
+		return -EPERM;
+	}
+
+	if (__netconfig_is_wifi_restricted() == TRUE)
+		return -EPERM;
 
 	if (netconfig_is_wifi_tethering_on() == TRUE) {
 		/* TODO: Wi-Fi tethering turns off here */
 		/* return TRUE; */
-		return FALSE;
+		ERR("Failed to turn tethering off");
+		return -EBUSY;
 	}
 
+#if defined TIZEN_P2P_ENABLE && !defined WLAN_CONCURRENT_MODE
 	if (netconfig_is_wifi_direct_on() == TRUE) {
 		if (__netconfig_wifi_direct_power_off() == TRUE)
-			return TRUE;
-		else
-			return FALSE;
-	}
-
-	if (__netconfig_wifi_load_driver() != TRUE) {
-		__netconfig_wifi_remove_driver();
-
-		return FALSE;
-	}
-
-	for (count = 0; count < 3; count++) {
-		__netconfig_wifi_enable_technology();
-
-		wifi_tech_state = netconfig_wifi_get_technology_state();
-
-		if (wifi_tech_state == NULL) {
-			DBG("Failed to get Wi-Fi technology state");
-			continue;
+			return -EINPROGRESS;
+		else {
+			ERR("Failed to turn Wi-Fi direct off");
+			return -EBUSY;
 		}
-
-		if (g_str_equal(wifi_tech_state, "EnabledTechnologies") == TRUE) {
-			netconfig_wifi_update_power_state(TRUE);
-
-			netconfig_wifi_device_picker_service_start();
-
-			g_free(wifi_tech_state);
-			wifi_tech_state = NULL;
-
-			return TRUE;
-		}
-
-		g_free(wifi_tech_state);
-		wifi_tech_state = NULL;
 	}
+#endif
 
-	__netconfig_wifi_try_to_remove_driver();
+	err = netconfig_wifi_driver_and_supplicant(TRUE);
+	if (err < 0 && err != -EALREADY)
+		return err;
 
-	return FALSE;
+	err = __netconfig_wifi_connman_technology(TRUE);
+
+	return err;
 }
 
-static gboolean __netconfig_wifi_try_to_remove_driver(void)
+int netconfig_wifi_off(void)
 {
-	int count = 0;
-	gchar *wifi_tech_state = NULL;
+	int err;
 
-	netconfig_wifi_device_picker_service_stop();
+	__netconfig_p2p_supplicant(FALSE);
 
-	netconfig_wifi_statistics_update_powered_off();
-
-	for (count = 0; count < 3; count++) {
-		__netconfig_wifi_disable_technology();
-
-		wifi_tech_state = netconfig_wifi_get_technology_state();
-
-		if (wifi_tech_state == NULL) {
-			DBG("Failed to get Wi-Fi technology state");
-			continue;
-		}
-
-		if (g_str_equal(wifi_tech_state, "EnabledTechnologies") != TRUE) {
-			g_free(wifi_tech_state);
-			wifi_tech_state = NULL;
-
-			break;
-		}
-
-		g_free(wifi_tech_state);
-		wifi_tech_state = NULL;
-	}
-
-	if (__netconfig_wifi_remove_driver() == TRUE) {
+	err = __netconfig_wifi_connman_technology(FALSE);
+	if (err == -EALREADY)
 		netconfig_wifi_update_power_state(FALSE);
-		return TRUE;
-	}
 
-	return FALSE;
+	return 0;
 }
 
-static void __netconfig_wifi_airplane_mode(keynode_t* node,
+#if defined TIZEN_WEARABLE
+int netconfig_wifi_on_wearable(void)
+{
+	int err = 0;
+	int wifi_use;
+	int ps_mode;
+	enum netconfig_wifi_tech_state wifi_tech_state;
+
+	wifi_tech_state = netconfig_wifi_state_get_technology_state();
+	if (wifi_tech_state >= NETCONFIG_WIFI_TECH_POWERED)
+		return -EALREADY;
+
+	if (vconf_get_int(VCONF_WIFI_WEARABLE_WIFI_USE, &wifi_use) < 0) {
+		ERR("Fail to get VCONF_WIFI_WEARABLE_WIFI_USE");
+		return -EIO;
+	}
+
+	if (wifi_use > 0) {
+		if (vconf_get_int(VCONFKEY_SETAPPL_PSMODE, &ps_mode) < 0) {
+			ERR("Fail to get VCONFKEY_SETAPPL_PSMODE");
+			return -EIO;
+		}
+
+		if (ps_mode > SETTING_PSMODE_NORMAL) {
+			WARN("ps mode is on(%d), Not turn on Wi-Fi", ps_mode);
+			return -EPERM;
+		}
+	} else {
+		WARN("Not permitted Wi-Fi on");
+		return -EPERM;
+	}
+
+	err = netconfig_wifi_driver_and_supplicant(TRUE);
+	if (err < 0 && err != -EALREADY)
+		return err;
+
+	err = __netconfig_wifi_connman_technology(TRUE);
+
+	return err;
+}
+
+static void __netconfig_wifi_wearable_wifi_use_mode(keynode_t* node,
 		void* user_data)
 {
-	int value = 0;
-	int wifi_state = 0;
-	static gboolean powered_off_by_flightmode = FALSE;
+	int wifi_state;
+	int wifi_use;
 
-	vconf_get_bool(VCONFKEY_SETAPPL_FLIGHT_MODE_BOOL, &value);
+	if (vconf_get_int(VCONFKEY_WIFI_STATE, &wifi_state) < 0) {
+		ERR("Fail to get VCONFKEY_WIFI_STATE");
+		return;
+	}
+
+	if (node != NULL)
+		wifi_use = vconf_keynode_get_int(node);
+	else
+		vconf_get_int(VCONF_WIFI_WEARABLE_WIFI_USE, &wifi_use);
+
+	if (wifi_use > 0) {
+		DBG("wifi use on");
+		if (wifi_state > VCONFKEY_WIFI_OFF) {
+			WARN("Wi-Fi is already turned on");
+			return;
+		}
+
+		netconfig_wifi_on_wearable();
+	} else {
+		DBG("wifi use off");
+		if (wifi_state == VCONFKEY_WIFI_OFF) {
+			WARN("Wi-Fi is already turned off");
+			return;
+		}
+
+		netconfig_wifi_off();
+	}
+}
+#endif
+
+void netconfig_wifi_fetch_airplane_mode(void)
+{
+	int airplane_state = 0;
+	vconf_get_bool(VCONFKEY_TELEPHONY_FLIGHT_MODE, &airplane_state);
+	airplane_mode = airplane_state;
+	DBG("airplane mode %s", airplane_state > 0 ? "ON" : "OFF");
+}
+
+#if defined TIZEN_WEARABLE
+static void __netconfig_wifi_wearable_airplane_mode(keynode_t *node,
+		void *user_data)
+{
+	int wifi_use = 0, airplane_state = 0;
+	int wifi_use_off_by_airplane = 0;
+
+	vconf_get_int(VCONF_WIFI_OFF_STATE_BY_AIRPLANE,
+			&wifi_use_off_by_airplane);
+
+	vconf_get_int(VCONF_WIFI_WEARABLE_WIFI_USE, &wifi_use);
+
+	if (node != NULL)
+		airplane_state = vconf_keynode_get_bool(node);
+	else
+		vconf_get_bool(VCONFKEY_TELEPHONY_FLIGHT_MODE, &airplane_state);
+
+	DBG("airplane mode %s (prev:%d)", airplane_state > 0 ? "ON" : "OFF", airplane_mode);
+	DBG("Wi-Fi use %d, Wi-Fi was off by flight mode %s", wifi_use,
+			wifi_use_off_by_airplane ? "Yes" : "No");
+
+	if (airplane_mode == airplane_state)
+		return ;
+
+	airplane_mode = airplane_state;
+
+	if (airplane_state > 0) {
+		/* airplane mode on */
+		if (wifi_use == 0)
+			return;
+
+		netconfig_set_vconf_int(VCONF_WIFI_OFF_STATE_BY_AIRPLANE, 1);
+		netconfig_set_vconf_int(VCONF_WIFI_WEARABLE_WIFI_USE, 0);
+
+	} else {
+		/* airplane mode off */
+		if (!wifi_use_off_by_airplane)
+			return;
+
+		netconfig_set_vconf_int(VCONF_WIFI_OFF_STATE_BY_AIRPLANE, 0);
+		netconfig_set_vconf_int(VCONF_WIFI_WEARABLE_WIFI_USE, 1);
+	}
+}
+#else
+static void __netconfig_wifi_airplane_mode(keynode_t *node, void *user_data)
+{
+	int wifi_state = 0, airplane_state = 0;
+	int wifi_off_by_airplane = 0;
+
+	vconf_get_int(VCONF_WIFI_OFF_STATE_BY_AIRPLANE, &wifi_off_by_airplane);
+
 	vconf_get_int(VCONFKEY_WIFI_STATE, &wifi_state);
 
-	DBG("flight mode %s", value > 0 ? "ON" : "OFF");
-	DBG("Wi-Fi state %d, Wi-Fi was off by flight mode %s",
-			wifi_state, powered_off_by_flightmode == TRUE ? "Yes" : "No");
+	if (node != NULL)
+		airplane_state = vconf_keynode_get_bool(node);
+	else
+		vconf_get_bool(VCONFKEY_TELEPHONY_FLIGHT_MODE, &airplane_state);
 
-	if (value > 0) {
-		/* flight mode enabled */
+	DBG("airplane mode %s (prev:%d)", airplane_state > 0 ? "ON" : "OFF", airplane_mode);
+	DBG("Wi-Fi state %d, Wi-Fi was off by flight mode %s", wifi_state,
+			wifi_off_by_airplane ? "Yes" : "No");
+
+	if (airplane_mode == airplane_state)
+		return ;
+
+	airplane_mode = airplane_state;
+
+	if (airplane_state > 0) {
+		/* airplane mode on */
 		if (wifi_state == VCONFKEY_WIFI_OFF)
 			return;
 
-		DBG("Turning Wi-Fi off");
+		netconfig_wifi_off();
 
-		__netconfig_wifi_try_to_remove_driver();
+		netconfig_set_vconf_int(VCONF_WIFI_OFF_STATE_BY_AIRPLANE, 1);
+	} else {
+		/* airplane mode off */
+		if (!wifi_off_by_airplane)
+			return;
 
-		powered_off_by_flightmode = TRUE;
-	} else if (value == 0) {
-		/* flight mode disabled */
+		netconfig_set_vconf_int(VCONF_WIFI_OFF_STATE_BY_AIRPLANE, 0);
+
 		if (wifi_state > VCONFKEY_WIFI_OFF)
 			return;
 
-		if (powered_off_by_flightmode != TRUE)
+		netconfig_wifi_on();
+	}
+}
+#endif
+
+static void __netconfig_wifi_restrict_mode(keynode_t *node, void *user_data)
+{
+	int wifi_state = 0, restricted = 0;
+	int wifi_off_by_restricted = 0;
+
+	vconf_get_int(VCONF_WIFI_OFF_STATE_BY_RESTRICTED, &wifi_off_by_restricted);
+
+	vconf_get_int(VCONFKEY_WIFI_STATE, &wifi_state);
+
+	if (node != NULL)
+		restricted = vconf_keynode_get_bool(node);
+	else
+		vconf_get_bool(VCONFKEY_SETAPPL_NETWORK_RESTRICT_MODE, &restricted);
+
+	DBG("network restricted mode %s", restricted > 0 ? "ON" : "OFF");
+	DBG("Wi-Fi state %d, Wi-Fi was off by restricted mode %s", wifi_state,
+			wifi_off_by_restricted ? "Yes" : "No");
+
+	if (restricted > 0) {
+		/* network restricted on */
+		if (wifi_state == VCONFKEY_WIFI_OFF)
 			return;
 
-		__netconfig_wifi_try_to_load_driver();
+		netconfig_wifi_off();
 
-		powered_off_by_flightmode = FALSE;
-	} else
-		DBG("Invalid value (%d)", value);
+		netconfig_set_vconf_int(VCONF_WIFI_OFF_STATE_BY_RESTRICTED, 1);
+	} else {
+		/* network restricted off */
+		if (!wifi_off_by_restricted)
+			return;
+
+		netconfig_set_vconf_int(VCONF_WIFI_OFF_STATE_BY_RESTRICTED, 0);
+
+		if (wifi_state > VCONFKEY_WIFI_OFF)
+			return;
+
+		netconfig_wifi_on();
+	}
 }
 
-static void __netconfig_wifi_pm_state_mode(keynode_t* node,
-		void* user_data)
+static void __netconfig_wifi_emergency_mode(keynode_t *node, void *user_data)
 {
-	int value = -1;
+	int wifi_state = 0, emergency = 0;
+	int wifi_off_by_emergency = 0;
+#if !defined TIZEN_WEARABLE
+	int emergency_by_fmm = 0;
+#endif
+
+	vconf_get_int(VCONF_WIFI_OFF_STATE_BY_EMERGENCY, &wifi_off_by_emergency);
+
+	vconf_get_int(VCONFKEY_WIFI_STATE, &wifi_state);
+
+#if !defined TIZEN_WEARABLE
+	vconf_get_bool(VCONFKEY_SETAPPL_NETWORK_PERMIT_WITH_LCD_OFF_LIMIT, &emergency_by_fmm);
+	DBG("emergency mode by Find My Mobile (%d)", emergency_by_fmm);
+	if (emergency_by_fmm == 1)
+		return;
+#endif
+
+	if (node != NULL)
+		emergency = vconf_keynode_get_int(node);
+	else
+		vconf_get_int(VCONFKEY_SETAPPL_PSMODE, &emergency);
+
+	DBG("emergency mode %s", emergency > SETTING_PSMODE_POWERFUL ? "ON" : "OFF");
+	DBG("Wi-Fi state %d, Wi-Fi was off by emergency mode %s", wifi_state,
+			wifi_off_by_emergency ? "Yes" : "No");
+
+#if defined TIZEN_WEARABLE
+	if (emergency == SETTING_PSMODE_WEARABLE) {
+		/* basic power saving mode on */
+	} else if (emergency == SETTING_PSMODE_WEARABLE_ENHANCED) {
+		/* enhanced power saving mode on */
+		if (wifi_state == VCONFKEY_WIFI_OFF)
+			return;
+
+		netconfig_wifi_off();
+
+		netconfig_set_vconf_int(VCONF_WIFI_OFF_STATE_BY_EMERGENCY, 1);
+	} else {
+		/* power saving mode off */
+		if (!wifi_off_by_emergency)
+			return;
+
+		netconfig_set_vconf_int(VCONF_WIFI_OFF_STATE_BY_EMERGENCY, 0);
+
+		if (wifi_state > VCONFKEY_WIFI_OFF)
+			return;
+
+		netconfig_wifi_on_wearable();
+	}
+#else
+	if (emergency > SETTING_PSMODE_POWERFUL) {
+		/* emergency mode on */
+		if (wifi_state == VCONFKEY_WIFI_OFF)
+			return;
+
+		netconfig_wifi_off();
+
+		netconfig_set_vconf_int(VCONF_WIFI_OFF_STATE_BY_EMERGENCY, 1);
+	} else {
+		/* emergency mode off */
+		if (!wifi_off_by_emergency)
+			return;
+
+		netconfig_set_vconf_int(VCONF_WIFI_OFF_STATE_BY_EMERGENCY, 0);
+
+		if (wifi_state > VCONFKEY_WIFI_OFF)
+			return;
+
+		netconfig_wifi_on();
+	}
+#endif
+
+}
+
+static void __netconfig_wifi_pm_state_mode(keynode_t* node, void* user_data)
+{
+	int new_state = -1;
 	int wifi_state = 0;
 	static int prev_state = VCONFKEY_PM_STATE_NORMAL;
 
-	/*** vconf-keys.h ***
-	 * 		VCONFKEY_PM_STATE_NORMAL = 1,
-	 * 		VCONFKEY_PM_STATE_LCDDIM,
-	 * 		VCONFKEY_PM_STATE_LCDOFF,
-	 * 		VCONFKEY_PM_STATE_SLEEP
-	 */
-
-	if(vconf_get_int(VCONFKEY_WIFI_STATE, &wifi_state) == 0) {
-		DBG("wifi state : %d (0 off / 1 on / 2 connected)", wifi_state);
-		if(wifi_state <= VCONFKEY_WIFI_OFF)
-			return;
-	}
-
-	if(vconf_get_int(VCONFKEY_PM_STATE, &value) < 0) {
-		ERR("VCONFKEY_PM_STATE get failed");
+	if (vconf_get_int(VCONFKEY_WIFI_STATE, &wifi_state) < 0) {
+		ERR("Fail to get VCONFKEY_WIFI_STATE");
 		return;
 	}
 
-	DBG("Old state: %d, current: %d", prev_state, value);
+	/* PM state
+	 *	VCONFKEY_PM_STATE_NORMAL = 1,
+	 *	VCONFKEY_PM_STATE_LCDDIM,
+	 *	VCONFKEY_PM_STATE_LCDOFF,
+	 *	VCONFKEY_PM_STATE_SLEEP
+	 */
+	if (node != NULL)
+		new_state = vconf_keynode_get_int(node);
+	else
+		vconf_get_int(VCONFKEY_PM_STATE, &new_state);
 
-	if((value == VCONFKEY_PM_STATE_NORMAL) && (prev_state >= VCONFKEY_PM_STATE_LCDOFF)) {
-		DBG("PM state : Wake UP!");
+	DBG("wifi state: %d (0 off / 1 on / 2 connected)", wifi_state);
+	DBG("Old PM state: %d, current: %d", prev_state, new_state);
+
+	if ((new_state == VCONFKEY_PM_STATE_NORMAL) &&
+			(prev_state >= VCONFKEY_PM_STATE_LCDOFF)) {
 
 		netconfig_wifi_bgscan_stop();
-		netconfig_wifi_bgscan_start();
+		netconfig_wifi_bgscan_start(TRUE);
+	} else if ((new_state == VCONFKEY_PM_STATE_LCDOFF) &&
+			(prev_state < VCONFKEY_PM_STATE_LCDOFF)) {
 	}
 
-	prev_state = value;
+	prev_state = new_state;
 }
 
-static void __netconfig_wifi_power_configuration(void)
+static void _tapi_noti_sim_status_cb(TapiHandle *handle, const char *noti_id,
+										void *data, void *user_data)
 {
+	TelSimCardStatus_t *status = data;
+
+	if (*status == TAPI_SIM_STATUS_SIM_INIT_COMPLETED) {
+		DBG("Turn Wi-Fi on automatically");
+#if defined TIZEN_WEARABLE
+		netconfig_wifi_on_wearable();
+#else
+		netconfig_wifi_on();
+#endif
+		netconfig_tel_deinit();
+	}
+}
+
+static gboolean netconfig_tapi_check_sim_state(void)
+{
+	int ret, card_changed;
+	TelSimCardStatus_t status;
+	TapiHandle *tapi_handle = NULL;
+
+	tapi_handle = (TapiHandle *)netconfig_tel_init();
+
+	ret = tel_get_sim_init_info(tapi_handle, &status, &card_changed);
+	if (ret != TAPI_API_SUCCESS) {
+		ERR("tel_get_sim_init_info() Failed");
+		netconfig_tel_deinit();
+		return FALSE;
+	}
+
+	switch (status) {
+	case TAPI_SIM_STATUS_UNKNOWN:
+	case TAPI_SIM_STATUS_CARD_ERROR:
+	case TAPI_SIM_STATUS_CARD_NOT_PRESENT:
+	case TAPI_SIM_STATUS_CARD_BLOCKED:
+	case TAPI_SIM_STATUS_SIM_INIT_COMPLETED:
+		break;
+	case TAPI_SIM_STATUS_SIM_PIN_REQUIRED:
+	case TAPI_SIM_STATUS_SIM_INITIALIZING:
+	case TAPI_SIM_STATUS_SIM_PUK_REQUIRED:
+	case TAPI_SIM_STATUS_SIM_LOCK_REQUIRED:
+	case TAPI_SIM_STATUS_SIM_NCK_REQUIRED:
+	case TAPI_SIM_STATUS_SIM_NSCK_REQUIRED:
+	case TAPI_SIM_STATUS_SIM_SPCK_REQUIRED:
+	case TAPI_SIM_STATUS_SIM_CCK_REQUIRED:
+		tel_register_noti_event(tapi_handle, TAPI_NOTI_SIM_STATUS,
+				_tapi_noti_sim_status_cb, NULL);
+		return FALSE;
+	default:
+		ERR("not defined status(%d)", status);
+		break;
+	}
+
+	netconfig_tel_deinit();
+
+	return TRUE;
+}
+
+static void __netconfig_tapi_state_changed_cb(keynode_t * node, void *data)
+{
+	int tapi_state = 0;
+
+	if (node != NULL)
+		tapi_state = vconf_keynode_get_int(node);
+	else
+		vconf_get_int(VCONFKEY_TELEPHONY_TAPI_STATE, &tapi_state);
+
+	if (tapi_state != VCONFKEY_TELEPHONY_TAPI_STATE_NONE) {
+		if (netconfig_tapi_check_sim_state() == FALSE) {
+			DBG("Sim is not initialized yet.");
+
+			goto done;
+		}
+	} else
+		return;
+
+	DBG("Turn Wi-Fi on automatically");
+
+#if defined TIZEN_WEARABLE
+	netconfig_wifi_on_wearable();
+#else
+	netconfig_wifi_on();
+#endif
+
+done:
+	vconf_ignore_key_changed(VCONFKEY_TELEPHONY_TAPI_STATE,
+			__netconfig_tapi_state_changed_cb);
+}
+
+void netconfig_wifi_power_initialize(void)
+{
+	int tapi_state = 0;
+	int airplane_state = 0;
 	int wifi_last_power_state = 0;
-
-	vconf_notify_key_changed(VCONFKEY_SETAPPL_FLIGHT_MODE_BOOL,
-			__netconfig_wifi_airplane_mode, NULL);
-
-	vconf_notify_key_changed(VCONFKEY_PM_STATE,
-			__netconfig_wifi_pm_state_mode, NULL);
 
 	vconf_get_int(VCONF_WIFI_LAST_POWER_STATE, &wifi_last_power_state);
 
-	if (wifi_last_power_state == WIFI_POWER_ON) {
+	if (wifi_last_power_state > VCONFKEY_WIFI_OFF) {
+		vconf_get_bool(VCONFKEY_TELEPHONY_FLIGHT_MODE, &airplane_state);
+
+		if (airplane_state == 0) {
+			vconf_get_int(VCONFKEY_TELEPHONY_TAPI_STATE, &tapi_state);
+
+			if (tapi_state == VCONFKEY_TELEPHONY_TAPI_STATE_NONE) {
+				vconf_notify_key_changed(VCONFKEY_TELEPHONY_TAPI_STATE,
+						__netconfig_tapi_state_changed_cb, NULL);
+
+				goto done;
+			} else {
+				if (netconfig_tapi_check_sim_state() == FALSE) {
+					DBG("Sim is not initialized yet.");
+
+					goto done;
+				}
+			}
+		}
+
 		DBG("Turn Wi-Fi on automatically");
 
-		__netconfig_wifi_try_to_load_driver();
-	}
-}
-
-static void __netconfig_wifi_notify_power_completed(gboolean power_on)
-{
-	DBusMessage *signal;
-	DBusConnection *connection = NULL;
-	DBusError error;
-	char *sig_name =  NULL;
-
-	if (power_on)
-		sig_name = "PowerOnCompleted";
-	else
-		sig_name = "PowerOffCompleted";
-
-	dbus_error_init(&error);
-
-	connection = dbus_bus_get(DBUS_BUS_SYSTEM, &error);
-	if (connection == NULL) {
-		ERR("Error!!! Failed to get system DBus, error [%s]", error.message);
-		dbus_error_free(&error);
-		return;
+#if defined TIZEN_WEARABLE
+		netconfig_wifi_on_wearable();
+#else
+		netconfig_wifi_on();
+#endif
 	}
 
-	signal = dbus_message_new_signal(NETCONFIG_WIFI_PATH,
-							NETCONFIG_WIFI_INTERFACE, sig_name);
-	if (signal == NULL)
-		return;
+done:
+#if defined TIZEN_WEARABLE
+	vconf_notify_key_changed(VCONF_WIFI_WEARABLE_WIFI_USE,
+			__netconfig_wifi_wearable_wifi_use_mode, NULL);
+#endif
 
-	dbus_connection_send(connection, signal, NULL);
+#if defined TIZEN_WEARABLE
+	vconf_notify_key_changed(VCONFKEY_TELEPHONY_FLIGHT_MODE,
+			__netconfig_wifi_wearable_airplane_mode, NULL);
+#else
+	vconf_notify_key_changed(VCONFKEY_TELEPHONY_FLIGHT_MODE,
+			__netconfig_wifi_airplane_mode, NULL);
+#endif
 
-	dbus_message_unref(signal);
-	dbus_connection_unref(connection);
+	vconf_notify_key_changed(VCONFKEY_SETAPPL_NETWORK_RESTRICT_MODE,
+			__netconfig_wifi_restrict_mode, NULL);
 
-	INFO("(%s)", sig_name);
+	vconf_notify_key_changed(VCONFKEY_SETAPPL_PSMODE,
+			__netconfig_wifi_emergency_mode, NULL);
+
+	vconf_notify_key_changed(VCONFKEY_PM_STATE,
+			__netconfig_wifi_pm_state_mode, NULL);
 }
 
-gpointer netconfig_wifi_create_and_init(DBusGConnection *conn)
+gboolean netconfig_iface_wifi_load_driver(NetconfigWifi *wifi,
+		gboolean device_picker_test, GError **error)
 {
-	GObject *object;
+	int err;
 
-	g_return_val_if_fail(conn != NULL, NULL);
-
-	object = g_object_new(NETCONFIG_TYPE_WIFI, "conn", conn, "path",
-			NETCONFIG_WIFI_PATH, NULL);
-
-	INFO("create wifi(%p)", object);
-
-	dbus_g_connection_register_g_object(conn, NETCONFIG_WIFI_PATH, object);
-
-	INFO("wifi(%p) register DBus path(%s)", object, NETCONFIG_WIFI_PATH);
-
-	__netconfig_wifi_power_configuration();
-
-	return object;
-}
-
-gboolean netconfig_iface_wifi_load_driver(NetconfigWifi *wifi, GError **error)
-{
-	DBG("Wi-Fi turned on");
+	DBG("Wi-Fi power on requested");
 
 	g_return_val_if_fail(wifi != NULL, FALSE);
 
-	if (netconfig_is_wifi_allowed() != TRUE) {
-		netconfig_error_security_restricted(error);
+#if defined TIZEN_WEARABLE
+	err = netconfig_wifi_on_wearable();
+#else
+	err = netconfig_wifi_on();
+#endif
+	if (err < 0) {
+		if (err == -EINPROGRESS)
+			netconfig_error_inprogress(error);
+		else if (err == -EALREADY)
+			netconfig_error_already_exists(error);
+		else if (err == -EPERM)
+			netconfig_error_permission_denied(error);
+		else
+			netconfig_error_wifi_driver_failed(error);
 
 		return FALSE;
 	}
 
-	if (__netconfig_wifi_try_to_load_driver() != TRUE) {
-		netconfig_error_wifi_driver_failed(error);
+	if (device_picker_test == TRUE)
+		netconfig_wifi_enable_device_picker_test();
 
-		return FALSE;
-	}
+	netconfig_set_vconf_int(VCONF_WIFI_OFF_STATE_BY_AIRPLANE, 0);
 
-	__netconfig_wifi_notify_power_completed(TRUE);
 	return TRUE;
 }
 
 gboolean netconfig_iface_wifi_remove_driver(NetconfigWifi *wifi, GError **error)
 {
-	DBG("Wi-Fi turned off");
+	int err;
+
+	DBG("Wi-Fi power off requested");
 
 	g_return_val_if_fail(wifi != NULL, FALSE);
 
-	if (__netconfig_wifi_try_to_remove_driver() != TRUE) {
-		netconfig_error_wifi_driver_failed(error);
+	err = netconfig_wifi_off();
+	if (err < 0) {
+		if (err == -EINPROGRESS)
+			netconfig_error_inprogress(error);
+		else if (err == -EALREADY)
+			netconfig_error_already_exists(error);
+		else if (err == -EPERM)
+			netconfig_error_permission_denied(error);
+		else
+			netconfig_error_wifi_driver_failed(error);
 
 		return FALSE;
 	}
 
-	__netconfig_wifi_notify_power_completed(FALSE);
+	netconfig_set_vconf_int(VCONF_WIFI_OFF_STATE_BY_AIRPLANE, 0);
+
 	return TRUE;
 }
+
+gboolean netconfig_iface_wifi_load_p2p_driver(NetconfigWifi *wifi, GError **error)
+{
+	int err = 0;
+
+	DBG("P2P power on requested");
+
+	g_return_val_if_fail(wifi != NULL, FALSE);
+
+#if defined TIZEN_WEARABLE
+	err = netconfig_wifi_on_wearable();
+#elif defined WLAN_CONCURRENT_MODE
+	err = netconfig_wifi_on();
+#else
+	err = netconfig_wifi_firmware(NETCONFIG_WIFI_STA, TRUE);
+#endif
+	if (err < 0)
+		if (err != -EINPROGRESS && err != -EALREADY)
+			return FALSE;
+
+	netconfig_set_vconf_int(VCONF_WIFI_OFF_STATE_BY_AIRPLANE, 0);
+
+	err = __netconfig_p2p_supplicant(TRUE);
+	if (err < 0)
+		return FALSE;
+
+	return TRUE;
+}
+
+gboolean netconfig_iface_wifi_remove_p2p_driver(NetconfigWifi *wifi, GError **error)
+{
+	int err = 0;
+
+	DBG("P2P power off requested");
+
+	g_return_val_if_fail(wifi != NULL, FALSE);
+
+	err = __netconfig_p2p_supplicant(FALSE);
+	if (err < 0)
+		return FALSE;
+
+	return TRUE;
+}
+

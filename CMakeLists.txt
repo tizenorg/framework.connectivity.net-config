@@ -8,20 +8,31 @@ SET(LIBDIR "${PREFIX}/lib")
 
 SET(SRCS
 	src/main.c
+	src/wifi.c
 	src/neterror.c
+	src/wifi-eap.c
+	src/wifi-wps.c
+	src/wifi-agent.c
+	src/wifi-ccode.c
 	src/wifi-power.c
 	src/wifi-state.c
+	src/cellular-state.c
+	src/wifi-passpoint.c
+	src/utils/log.c
+	src/utils/util.c
+	src/dbus/netdbus.c
+	src/network-clock.c
 	src/network-state.c
-	src/network-statistics.c
+	src/wifi-firmware.c
 	src/wifi-indicator.c
 	src/signal-handler.c
 	src/wifi-ssid-scan.c
-	src/wifi-background-scan.c
-	src/dbus/netdbus.c
-	src/dbus/netsupplicant.c
-	src/utils/util.c
 	src/utils/emulator.c
-	src/utils/mdm-private.c
+	src/wifi-eap-config.c
+	src/network-statistics.c
+	src/dbus/netsupplicant.c
+	src/wifi-background-scan.c
+	src/wifi-tel-intf.c
 	)
 
 IF("${CMAKE_BUILD_TYPE}" STREQUAL "")
@@ -29,39 +40,79 @@ IF("${CMAKE_BUILD_TYPE}" STREQUAL "")
 ENDIF("${CMAKE_BUILD_TYPE}" STREQUAL "")
 MESSAGE("Build type: ${CMAKE_BUILD_TYPE}")
 
+IF(TIZEN_WLAN_PASSPOINT)
+	ADD_DEFINITIONS(-DTIZEN_WLAN_PASSPOINT)
+ENDIF(TIZEN_WLAN_PASSPOINT)
+
+IF(TIZEN_P2P_ENABLE)
+	ADD_DEFINITIONS(-DTIZEN_P2P_ENABLE)
+	SET(P2P_REQUIRED_PKGS "capi-network-wifi-direct")
+ENDIF(TIZEN_P2P_ENABLE)
+
+IF(TIZEN_TETHERING_ENABLE)
+	ADD_DEFINITIONS(-DTIZEN_TETHERING_ENABLE)
+ENDIF(TIZEN_TETHERING_ENABLE)
+
+IF(TIZEN_CAPTIVE_PORTAL)
+	ADD_DEFINITIONS(-DTIZEN_CAPTIVE_PORTAL)
+	SET(SRCS ${SRCS} src/utils/network-accessibility.c)
+ENDIF(TIZEN_CAPTIVE_PORTAL)
+
+
+#IF(TIZEN_MOBILE)
+#	ADD_DEFINITIONS(-DTIZEN_MOBILE)
+#ENDIF(TIZEN_MOBILE)
+IF(TIZEN_WEARABLE)
+	ADD_DEFINITIONS(-DTIZEN_WEARABLE)
+ENDIF(TIZEN_WEARABLE)
+
 INCLUDE(FindPkgConfig)
 PKG_CHECK_MODULES(pkgs REQUIRED
+	dlog
+	tapi
+	vconf
+	journal
+	gio-2.0
 	glib-2.0
 	dbus-glib-1
-	dlog
-	vconf
-	wifi-direct
-	syspopup-caller)
+	notification
+	alarm-service
+	syspopup-caller
+	capi-system-info
+	capi-appfw-application
+	${P2P_REQUIRED_PKGS}
+	${WEARABLE_REQUIRED_PKGS}
+	)
 
 FOREACH(flag ${pkgs_CFLAGS})
 	SET(EXTRA_CFLAGS "${EXTRA_CFLAGS} ${flag}")
 ENDFOREACH(flag)
 
-SET(EXTRA_CFLAGS "${EXTRA_CFLAGS} -fvisibility=hidden -Wall")
-SET(CMAKE_C_FLAGS "-I${CMAKE_SOURCE_DIR}/include ${CMAKE_C_FLAGS} ${EXTRA_CFLAGS}")
-SET(CMAKE_C_FLAGS_DEBUG "-O0 -g")
-SET(CMAKE_C_FLAGS_RELEASE "-O2")
+SET(EXTRA_CFLAGS "${EXTRA_CFLAGS} -Wall -Werror -fvisibility=hidden")
+SET(EXTRA_CXXFLAGS "${EXTRA_CXXFLAGS} -Wall -Werror -fvisibility=hidden -fvisibility-inlines-hidden")
+SET(CMAKE_C_FLAGS "-I${CMAKE_SOURCE_DIR}/include ${CMAKE_C_FLAGS} ${EXTRA_CFLAGS} -fPIE")
+SET(CMAKE_C_FLAGS_DEBUG "-O0 -g -fPIE")
+SET(CMAKE_C_FLAGS_RELEASE "-O2 -fPIE")
+
+IF(WLAN_CONCURRENT_MODE)
+	ADD_DEFINITIONS(-DWLAN_CONCURRENT_MODE)
+ENDIF(WLAN_CONCURRENT_MODE)
 
 FIND_PROGRAM(UNAME NAMES uname)
 EXEC_PROGRAM("${UNAME}" ARGS "-m"
 OUTPUT_VARIABLE "ARCH")
 IF("${ARCH}" STREQUAL "arm")
-	ADD_DEFINITIONS("-DEMBEDDED_TARGET")
-	MESSAGE("add -DEMBEDDED_TARGET")
+	ADD_DEFINITIONS("-DTARGET_ARM")
+	MESSAGE("add -DTARGET_ARM")
 ENDIF("${ARCH}" STREQUAL "arm")
 
 ADD_DEFINITIONS("-DPACKAGE=\"${PACKAGE}\"")
 ADD_DEFINITIONS("-DPREFIX=\"${PREFIX}\"")
 
-SET(CMAKE_EXE_LINKER_FLAGS "-Wl,--as-needed")
+SET(CMAKE_EXE_LINKER_FLAGS "-Wl,--as-needed -pie")
 
 ADD_EXECUTABLE(${PROJECT_NAME} ${SRCS})
-TARGET_LINK_LIBRARIES(${PROJECT_NAME} ${pkgs_LDFLAGS})
+TARGET_LINK_LIBRARIES(${PROJECT_NAME} ${pkgs_LDFLAGS} ${PCAP_LIB})
 
 ADD_CUSTOM_TARGET(netconfig-iface-network-state-glue.h
 	COMMAND dbus-binding-tool --mode=glib-server --prefix=netconfig_iface_network_state

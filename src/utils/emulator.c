@@ -17,64 +17,74 @@
  *
  */
 
+#include <vconf.h>
+#include <net/if.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <sys/ioctl.h>
 #include <arpa/inet.h>
-#include <net/if.h>
-#include <sys/utsname.h>
-#include <vconf.h>
 #include <vconf-keys.h>
+#include <system_info.h>
 
 #include "log.h"
 #include "emulator.h"
+#include "util.h"
 
 static gboolean netconfig_is_emulated = FALSE;
 
 static gboolean __netconfig_emulator_test_emulation_env(void)
 {
-	struct utsname buf;
-	const char *EMUL_UTSNAME_MACHINE_SUFFIX = "emulated";
+	int ret;
+	char *model = NULL;
 
 	DBG("Test emulation environment");
 
-	uname(&buf);
+	ret = system_info_get_platform_string("tizen.org/system/model_name", &model);
+	if (ret != SYSTEM_INFO_ERROR_NONE) {
+		ERR("Failed to get system information(%d)", ret);
+		return FALSE;
+	}
 
-	if (buf.machine != NULL &&
-			g_str_has_suffix(buf.machine, EMUL_UTSNAME_MACHINE_SUFFIX) == TRUE)
+	if (model && strncmp(model, "Emulator", strlen("Emulator")) == 0) {
+		free(model);
 		return TRUE;
+	}
+
+	if (model)
+		free(model);
 
 	return FALSE;
 }
 
 static void __netconfig_emulator_set_ip(void)
 {
-	const int BUF_LEN_MAX = 255;
 	const char EMUL_IFNAME[] = "eth0";
-	char ip[BUF_LEN_MAX];
+	char ip[30] = { 0, };
 	int sockfd = 0;
 	struct ifreq ifr;
 
-	if ((sockfd = socket(PF_INET, SOCK_DGRAM, 0)) < 0) {
+	sockfd = socket(PF_INET, SOCK_DGRAM | SOCK_CLOEXEC, 0);
+	if (sockfd < 0) {
 		ERR("Failed to open socket");
 		return;
 	}
 
 	memset(&ifr, 0, sizeof(struct ifreq));
-	g_strlcpy((char*)&ifr.ifr_name, EMUL_IFNAME, sizeof(EMUL_IFNAME));
+	g_strlcpy((char *)ifr.ifr_name, EMUL_IFNAME, 16);
 
 	if (ioctl(sockfd, SIOCGIFADDR, &ifr) < 0) {
-		ERR("Error getting IP address");
+		ERR("Failed to get IP address");
 
 		close(sockfd);
 		return;
 	}
 
-	g_strlcpy(ip, (char*)inet_ntoa(((struct sockaddr_in*)&ifr.ifr_addr)->sin_addr), BUF_LEN_MAX);
+	close(sockfd);
+
+	g_strlcpy(ip,
+			inet_ntoa(((struct sockaddr_in *)&ifr.ifr_addr)->sin_addr), 30);
 
 	vconf_set_str(VCONFKEY_NETWORK_IP, ip);
-
-	close(sockfd);
 }
 
 static void __netconfig_emulator_set_proxy(void)
@@ -82,17 +92,19 @@ static void __netconfig_emulator_set_proxy(void)
 	const char HTTP_PROXY[] = "http_proxy";
 	char *proxy = NULL;
 
-	proxy = getenv(HTTP_PROXY);
+	proxy = netconfig_get_env(HTTP_PROXY);
 	DBG("Get system proxy: %s", proxy);
 
-	if(proxy != NULL)
+	if (proxy != NULL){
 		vconf_set_str(VCONFKEY_NETWORK_PROXY, proxy);
+		free(proxy);
+	}
 }
 
 static void __netconfig_emulator_set_network_state(void)
 {
 	vconf_set_int(VCONFKEY_NETWORK_CONFIGURATION_CHANGE_IND, 1);
-	vconf_set_int(VCONFKEY_NETWORK_STATUS, VCONFKEY_NETWORK_CELLULAR);
+	vconf_set_int(VCONFKEY_NETWORK_STATUS, VCONFKEY_NETWORK_ETHERNET);
 	vconf_set_int(VCONFKEY_DNET_STATE, VCONFKEY_DNET_NORMAL_CONNECTED);
 }
 
@@ -112,7 +124,8 @@ void netconfig_emulator_test_and_start(void)
 {
 	netconfig_is_emulated = __netconfig_emulator_test_emulation_env();
 
-	DBG("Emulation environment tested: %s", netconfig_is_emulated ? "It's emulated" : "Not emulated");
+	DBG("Emulation environment tested: %s", netconfig_is_emulated ?
+			"It's emulated" : "Not emulated");
 
 	if (netconfig_is_emulated == TRUE)
 		__netconfig_emulator_config_emul_env();

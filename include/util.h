@@ -28,22 +28,44 @@ extern "C" {
 
 #include "wifi.h"
 
-void netconfig_start_timer_seconds(int secs,
+#define NETCONFIG_ADD_FOUND_AP_NOTI		"add_found_ap_noti"
+#define NETCONFIG_DEL_FOUND_AP_NOTI		"del_found_ap_noti"
+#define NETCONFIG_ADD_PORTAL_NOTI		"add_portal_noti"
+#define NETCONFIG_DEL_PORTAL_NOTI		"del_portal_noti"
+#define NETCONFIG_TIZENMOBILEENV 		"/run/tizen-mobile-env"
+
+GKeyFile *netconfig_keyfile_load(const char *pathname);
+void netconfig_keyfile_save(GKeyFile *keyfile, const char *pathname);
+
+void netconfig_start_timer_seconds(guint secs,
 		gboolean(*callback) (gpointer), void *user_data, guint *timer_id);
-void netconfig_start_timer(int msecs,
+void netconfig_start_timer(guint msecs,
 		gboolean(*callback) (gpointer), void *user_data, guint *timer_id);
 void netconfig_stop_timer(guint *timer_id);
 
+void netconfig_wifi_enable_device_picker_test(void);
 void netconfig_wifi_device_picker_service_start(void);
 void netconfig_wifi_device_picker_service_stop(void);
 
 gboolean netconfig_is_wifi_direct_on(void);
 gboolean netconfig_is_wifi_tethering_on(void);
 
-gboolean netconfig_execute_file(const char *file_path,
+gboolean netconfig_interface_up(const char *ifname);
+gboolean netconfig_interface_down(const char *ifname);
+
+int netconfig_execute_file(const char *file_path,
 		char *const args[], char *const env[]);
+int netconfig_add_route_ipv6(gchar *ip_addr, gchar *interface, gchar *gateway, unsigned char prefix_len);
+int netconfig_del_route_ipv6(gchar *ip_addr, gchar *interface, gchar *gateway, unsigned char prefix_len);
 
 gboolean netconfig_iface_wifi_launch_direct(NetconfigWifi *wifi, GError **error);
+
+gboolean netconfig_send_notification_to_net_popup(const char * noti, const char * data);
+int netconfig_send_message_to_net_popup(const char *title,
+		const char *content, const char *type, const char *ssid);
+void netconfig_set_vconf_int(const char * key, int value);
+void netconfig_set_vconf_str(const char * key, const char * value);
+char* netconfig_get_env(const char *key);
 
 #ifdef __cplusplus
 }

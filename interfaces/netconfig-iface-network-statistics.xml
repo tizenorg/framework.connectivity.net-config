@@ -2,16 +2,16 @@
 <node name="/net/netconfig/network_statistics">
 	<interface name="net.netconfig.network_statistics">
 		<method name="GetWifiTotalTxBytes">
-			<arg  type="t" name="total_bytes" direction="out" />
+			<arg type="t" name="total_bytes" direction="out"/>
 		</method>
 		<method name="GetWifiTotalRxBytes">
-			<arg  type="t" name="total_bytes" direction="out" />
+			<arg type="t" name="total_bytes" direction="out"/>
 		</method>
 		<method name="GetWifiLastTxBytes">
-			<arg  type="t" name="last_bytes" direction="out" />
+			<arg type="t" name="last_bytes" direction="out"/>
 		</method>
 		<method name="GetWifiLastRxBytes">
-			<arg  type="t" name="last_bytes" direction="out" />
+			<arg type="t" name="last_bytes" direction="out"/>
 		</method>
 		<method name="ResetCellularTotalTxBytes">
 		</method>

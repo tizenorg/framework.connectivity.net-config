@@ -22,3 +22,4 @@ debian/tmp
 netconfig-iface*-glue.h
 .project
 .cproject
+.settings

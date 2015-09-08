@@ -2,22 +2,94 @@
 <node name="/net/netconfig/wifi">
 	<interface name="net.netconfig.wifi">
 		<method name="LoadDriver">
+			<arg type="b" name="DevicePickerTest" direction="in"/>
 		</method>
 		<method name="RemoveDriver">
 		</method>
 		<method name="LaunchDirect">
 		</method>
+		<method name="LoadP2pDriver">
+		</method>
+		<method name="RemoveP2pDriver">
+		</method>
 		<method name="SetBgscan">
 			<arg type="u" name="ScanMode" direction="in"/>
+		</method>
+		<method name="ResumeBgscan">
+		</method>
+		<method name="PauseBgscan">
 		</method>
 		<method name="RequestSpecificScan">
 			<arg type="s" name="SSID" direction="in"/>
 		</method>
-		<signal name="DriverLoaded">
-			<arg name="mac" type="s"/>
-		</signal>
-		<signal name="PowerOn">
-			<arg name="error" type="s"/>
-		</signal>
+		<method name="RequestWpsScan">
+		</method>
+		<method name="GetPasspoint">
+			<arg type="i" name="enable" direction="out"/>
+		</method>
+		<method name="SetPasspoint">
+			<arg type="i" name="enable" direction="in"/>
+		</method>
+		<method name="CreateConfig">
+			<annotation name="org.freedesktop.DBus.GLib.Async" value="true"/>
+				<arg type="o" name="Service" direction="in"/>
+				<arg type="a{ss}" name="Fields" direction="in"/>
+		</method>
+		<method name="DeleteConfig">
+			<annotation name="org.freedesktop.DBus.GLib.Async" value="true"/>
+				<arg type="s" name="Profile" direction="in"/>
+		</method>
+		<method name="GetSimImsi">
+			<annotation name="org.freedesktop.DBus.GLib.Async" value="true"/>
+				<arg type="s" name="imsi_data" direction="out"/>
+		</method>
+		<method name="ReqSimAuth">
+			<arg type="ay" name="rand_data" direction="in"/>
+			<arg type="b" name="result" direction="out"/>
+		</method>
+		<method name="ReqAkaAuth">
+			<arg type="ay" name="rand_data" direction="in"/>
+			<arg type="ay" name="autn_data" direction="in"/>
+			<arg type="b" name="result" direction="out"/>
+		</method>
+		<method name="GetSimAuth">
+			<annotation name="org.freedesktop.DBus.GLib.Async" value="true"/>
+				<arg type="ay" name="auth_data" direction="out"/>
+		</method>
+		<method name="GetAkaAuth">
+			<annotation name="org.freedesktop.DBus.GLib.Async" value="true"/>
+				<arg type="ay" name="auth_data" direction="out"/>
+		</method>
+	</interface>
+	<interface name="net.connman.Agent">
+		<method name="SetField">
+			<annotation name="org.freedesktop.DBus.GLib.Async" value="true"/>
+				<arg type="o" name="Service" direction="in"/>
+				<arg type="a{sv}" name="Fields" direction="in"/>
+		</method>
+		<method name="RequestInput">
+			<annotation name="org.freedesktop.DBus.GLib.Async" value="true"/>
+				<arg type="o" name="Service" direction="in"/>
+				<arg type="a{sv}" name="Fields" direction="in"/>
+				<arg type="a{sv}" name="OutFields" direction="out"/>
+		</method>
+		<method name="ReportError">
+			<annotation name="org.freedesktop.DBus.GLib.Async" value="true"/>
+				<arg type="o" name="Service" direction="in"/>
+				<arg type="s" name="Error" direction="in"/>
+		</method>
+		<method name="RequestBrowser">
+			<annotation name="org.freedesktop.DBus.GLib.Async" value="true"/>
+				<arg type="o" name="Service" direction="in"/>
+				<arg type="s" name="url" direction="in"/>
+		</method>
+	</interface>
+	<interface name="net.netconfig.wifi.Firmware">
+		<method name="Start">
+			<arg type="s" name="Device" direction="in"/>
+		</method>
+		<method name="Stop">
+			<arg type="s" name="Device" direction="in"/>
+		</method>
 	</interface>
 </node>

@@ -27,361 +27,413 @@
 #include "log.h"
 #include "util.h"
 #include "netdbus.h"
-#include "netsupplicant.h"
+#include "neterror.h"
+#include "wifi-wps.h"
+#include "wifi-agent.h"
+#include "wifi-power.h"
 #include "wifi-state.h"
-#include "wifi-indicator.h"
+#include "mdm-private.h"
+#include "netsupplicant.h"
+#include "network-state.h"
+#include "cellular-state.h"
+#include "signal-handler.h"
 #include "wifi-ssid-scan.h"
 #include "wifi-background-scan.h"
-#include "neterror.h"
 
-#define SIGNAL_SCAN_DONE		"ScanDone"
-#define SIGNAL_BSS_ADDED		"BSSAdded"
+#define SIGNAL_INTERFACE_REMOVED			"InterfaceRemoved"
+#define SIGNAL_SCAN_DONE					"ScanDone"
+#define SIGNAL_BSS_ADDED					"BSSAdded"
+#define SIGNAL_PROPERTIES_CHANGED			"PropertiesChanged"
+#define SIGNAL_PROPERTIES_DRIVER_HANGED		"DriverHanged"
+#define SIGNAL_PROPERTIES_SESSION_OVERLAPPED	"SessionOverlapped"
 
-#define CONNMAN_SIGNAL_SCAN_COMPLETED		"ScanCompleted"
+#define CONNMAN_SIGNAL_SERVICES_CHANGED		"ServicesChanged"
 #define CONNMAN_SIGNAL_PROPERTY_CHANGED		"PropertyChanged"
 
-#define CONNMAN_MANAGER_SIGNAL_FILTER		"type='signal',interface='net.connman.Manager'"
-#define CONNMAN_TECHNOLOGY_SIGNAL_FILTER	"type='signal',interface='net.connman.Technology'"
-#define CONNMAN_SERVICE_SIGNAL_FILTER		"type='signal',interface='net.connman.Service'"
-#define SUPPLICANT_INTERFACE_SIGNAL_FILTER	"type='signal',interface='fi.w1.wpa_supplicant1.Interface'"
+#define CONNMAN_TECHNOLOGY_SIGNAL_FILTER \
+	"type='signal',interface='"CONNMAN_TECHNOLOGY_INTERFACE"'"
+
+#define CONNMAN_SERVICE_STATE_SIGNAL_FILTER \
+	"type='signal',interface='"CONNMAN_SERVICE_INTERFACE \
+	"',member='PropertyChanged',arg0='State'"
+
+#define CONNMAN_SERVICE_PROXY_SIGNAL_FILTER \
+	"type='signal',interface='"CONNMAN_SERVICE_INTERFACE \
+	"',member='PropertyChanged',arg0='Proxy'"
+
+#define SUPPLICANT_INTERFACE_REMOVED_SIGNAL_FILTER \
+	"type='signal',interface='"SUPPLICANT_INTERFACE \
+	"',member='"SIGNAL_INTERFACE_REMOVED"'"
+
+#define SUPPLICANT_INTERFACE_PROPERTIESCHANGED_SIGNAL_FILTER \
+	"type='signal',interface='"SUPPLICANT_IFACE_INTERFACE \
+	"',member='"SIGNAL_PROPERTIES_CHANGED"'"
+
+#define SUPPLICANT_INTERFACE_BSSADDED_SIGNAL_FILTER \
+	"type='signal',interface='"SUPPLICANT_IFACE_INTERFACE \
+	"',member='"SIGNAL_BSS_ADDED"'"
+
+#define SUPPLICANT_INTERFACE_SCANDONE_SIGNAL_FILTER \
+	"type='signal',interface='"SUPPLICANT_IFACE_INTERFACE \
+	"',member='"SIGNAL_SCAN_DONE"'"
+
+#define SUPPLICANT_INTERFACE_DRIVERHANGED_SIGNAL_FILTER \
+	"type='signal',interface='"SUPPLICANT_IFACE_INTERFACE \
+	"',member='"SIGNAL_PROPERTIES_DRIVER_HANGED"'"
+
+#define SUPPLICANT_INTERFACE_SESSIONOVERLAPPED_SIGNAL_FILTER \
+	"type='signal',interface='"SUPPLICANT_IFACE_INTERFACE \
+	"',member='"SIGNAL_PROPERTIES_SESSION_OVERLAPPED"'"
+
+#define CONNMAN_SERVICE_NAMECHANGED_SIGNAL_FILTER \
+	"type='signal',sender='"DBUS_SERVICE_DBUS \
+	"',interface='"DBUS_INTERFACE_DBUS \
+	"',member='NameOwnerChanged',path='/org/freedesktop/DBus'" \
+	",arg0='"CONNMAN_SERVICE"'"
 
 
 static DBusConnection *signal_connection = NULL;
 
-static int __netconfig_get_state(DBusMessage *msg, char *state)
+static void __netconfig_technology_signal_handler(DBusMessage *msg)
 {
-	char *key_name = NULL;
-	char *svc_state = NULL;
-	DBusMessageIter iter, sub_iter;
-	int Error = NETCONFIG_ERROR_INTERNAL;
+	char *key = NULL;
+	const char *tech = NULL;
+	dbus_bool_t value = FALSE;
 
-	/* Get state */
-	dbus_message_iter_init(msg, &iter);
-	int ArgType = dbus_message_iter_get_arg_type(&iter);
+	if (netconfig_dbus_get_basic_params_string(msg,
+			&key, DBUS_TYPE_BOOLEAN, &value) != TRUE)
+		return;
 
-	if (ArgType != DBUS_TYPE_STRING)
-		goto done;
+	tech = dbus_message_get_path(msg);
+	if (key == NULL || tech == NULL)
+		return;
 
-	dbus_message_iter_get_basic(&iter, &key_name);
-	if (g_str_equal(key_name, "State") != TRUE)
-		goto done;
-
-	dbus_message_iter_next(&iter);
-	ArgType = dbus_message_iter_get_arg_type(&iter);
-	if (ArgType != DBUS_TYPE_VARIANT)
-		goto done;
-
-	dbus_message_iter_recurse(&iter, &sub_iter);
-	ArgType = dbus_message_iter_get_arg_type(&sub_iter);
-	if (ArgType != DBUS_TYPE_STRING)
-		goto done;
-
-	dbus_message_iter_get_basic(&sub_iter, &svc_state);
-	snprintf(state, strlen(svc_state) + 1, "%s", svc_state);
-	Error = NETCONFIG_NO_ERROR;
-
-done:
-	return Error;
+	if (g_str_has_prefix(tech, CONNMAN_WIFI_TECHNOLOGY_PREFIX) == TRUE) {
+		if (g_strcmp0(key, "Powered") == 0) {
+			/* Power state */
+			if (value == TRUE) {
+				netconfig_wifi_update_power_state(TRUE);
+			} else {
+				netconfig_wifi_update_power_state(FALSE);
+			}
+		} else if (g_strcmp0(key, "Connected") == 0) {
+			/* Connection state */
+			netconfig_wifi_state_set_technology_state(
+								NETCONFIG_WIFI_TECH_CONNECTED);
+		} else if (g_strcmp0(key, "Tethering") == 0) {
+			/* Tethering state */
+			netconfig_wifi_state_set_technology_state(
+								NETCONFIG_WIFI_TECH_TETHERED);
+		}
+	} else if (g_str_has_prefix(tech,
+			CONNMAN_CELLULAR_TECHNOLOGY_PREFIX) == TRUE) {
+		/* Cellular technology state */
+	}
 }
 
-static char *__netconfig_get_property(DBusMessage * msg, char **property)
+static void __netconfig_service_signal_handler(DBusMessage *msg)
 {
-	DBusMessageIter args, variant;
 	char *sigvalue = NULL;
+	char *property = NULL;
+	char *service_profile = NULL;
+	DBusMessageIter args, variant, iter1, iter2, iter3, iter4;
+	const char *value = NULL;
 
-	/** read these parameters */
-	if (!dbus_message_iter_init(msg, &args))
-		ERR("Message does not have parameters");
-	else if (dbus_message_iter_get_arg_type(&args) != DBUS_TYPE_STRING)
-		ERR("Argument is not string");
-	else {
-		dbus_message_iter_get_basic(&args, &sigvalue);
+	service_profile = (char *)dbus_message_get_path(msg);
+	if (service_profile == NULL)
+		return;
+
+	dbus_message_iter_init(msg, &args);
+	dbus_message_iter_get_basic(&args, &sigvalue);
+	if (sigvalue == NULL)
+		return;
+
+	if (g_str_equal(sigvalue, "State") == TRUE) {
 		dbus_message_iter_next(&args);
 		dbus_message_iter_recurse(&args, &variant);
-		if (dbus_message_iter_get_arg_type(&variant) == DBUS_TYPE_STRING)
-			dbus_message_iter_get_basic(&variant, property);
-		else
-			*property = NULL;
-	}
+		dbus_message_iter_get_basic(&variant, &property);
 
-	return sigvalue;
-}
+		DBG("[%s] %s", property, service_profile);
+		if (netconfig_is_wifi_profile(service_profile) == TRUE) {
+			int wifi_state = 0;
 
-static void __netconfig_wifi_technology_state_signal_handler(
-		const char *sigvalue, const char *property)
-{
-	static char previous_technology_state[DBUS_STATE_MAX_BUFLEN] = {0};
+			vconf_get_int(VCONFKEY_WIFI_STATE, &wifi_state);
+			if (wifi_state == VCONFKEY_WIFI_OFF)
+				return;
 
-	if (sigvalue == NULL || property == NULL)
-		return;
+			if (g_str_equal(property, "ready") == TRUE ||
+					g_str_equal(property, "online") == TRUE) {
+				if (wifi_state >= VCONFKEY_WIFI_CONNECTED)
+					return;
 
-	if (g_str_equal(sigvalue, "State") != TRUE)
-		return;
-
-	if (g_str_equal(property, "unknown") == TRUE)
-		return;
-
-	if (g_str_equal(previous_technology_state, property) == TRUE)
-		return;
-
-	g_strlcpy(previous_technology_state, property, sizeof(previous_technology_state));
-
-	INFO("Technology state value is %s, property %s", sigvalue, property);
-
-	if (g_str_equal(property, "offline") == TRUE) {
-		gchar *wifi_tech_state = NULL;
-
-		wifi_tech_state = netconfig_wifi_get_technology_state();
-
-		if (wifi_tech_state == NULL)
-			netconfig_wifi_update_power_state(FALSE);
-		else {
-			if (g_str_equal(wifi_tech_state, "EnabledTechnologies") != TRUE)
-				netconfig_wifi_update_power_state(FALSE);
-
-			g_free(wifi_tech_state);
-		}
-	} else if (g_str_equal(property, "enabled") == TRUE)
-		netconfig_wifi_update_power_state(TRUE);
-}
-
-static void netconfig_wifi_set_essid(const char *active_profile)
-{
-	int err;
-	char *essid_name = NULL;
-	DBusMessage *message = NULL;
-	int MessageType = 0;
-
-	if (active_profile == NULL) {
-		ERR("Can't get active_profile");
-		return;
-	}
-
-	message = netconfig_invoke_dbus_method(CONNMAN_SERVICE, active_profile,
-			CONNMAN_SERVICE_INTERFACE, "GetProperties", NULL);
-
-	if (message == NULL) {
-		ERR("Failed to get service properties");
-		return;
-	}
-
-	MessageType = dbus_message_get_type(message);
-
-	if (MessageType == DBUS_MESSAGE_TYPE_ERROR) {
-		const char *ptr = dbus_message_get_error_name(message);
-		ERR("Error!!! Error message received [%s]", ptr);
-		goto done;
-	}
-
-	essid_name = netconfig_wifi_get_connected_service_name(message);
-
-	if (essid_name == NULL) {
-		ERR("Wi-Fi is not connected");
-		goto done;
-	}
-
-	err = vconf_set_str(VCONFKEY_WIFI_CONNECTED_AP_NAME, essid_name);
-	if (err != 0) {
-		ERR("Can't set essid [%d]", err);
-	}
-
-	g_free(essid_name);
-	essid_name = NULL;
-
-done:
-	dbus_message_unref(message);
-}
-
-static void netconfig_wifi_unset_essid(void)
-{
-	vconf_set_str(VCONFKEY_WIFI_CONNECTED_AP_NAME, "");
-}
-
-static void __netconfig_wifi_service_state_signal_handler(DBusMessage *msg, const char *profile)
-{
-	char state[DBUS_STATE_MAX_BUFLEN] = {0};
-	static char current_profile[DBUS_PATH_MAX_BUFLEN] = {0};
-
-	if (profile == NULL)
-		return;
-
-	if (__netconfig_get_state(msg, state) == NETCONFIG_NO_ERROR) {
-		int wifi_state = 0;
-
-		DBG("Signaled profile [%s] ==> state %s", profile, state);
-
-		vconf_get_int(VCONFKEY_WIFI_STATE, &wifi_state);
-		DBG("Current Wi-Fi state: %d", wifi_state);
-
-		if (g_str_equal(state, "ready") == TRUE ||
-				g_str_equal(state, "online") == TRUE) {
-			if (wifi_state > VCONFKEY_WIFI_OFF && wifi_state != VCONFKEY_WIFI_CONNECTED) {
-
-				INFO("Wifi connected");
-
-				if ((vconf_set_int(VCONFKEY_WIFI_STATE, VCONFKEY_WIFI_CONNECTED)) < 0)
-					ERR("Error!!! vconf_set_int failed");
+				netconfig_update_default_profile(service_profile);
 
 				netconfig_wifi_state_set_service_state(NETCONFIG_WIFI_CONNECTED);
 
-				netconfig_wifi_set_essid(profile);
+				netconfig_check_allowed_ap(service_profile);
 
-				netconfig_wifi_indicator_start();
+			} else if (g_str_equal(property, "failure") == TRUE ||
+					g_str_equal(property, "disconnect") == TRUE ||
+					g_str_equal(property, "idle") == TRUE) {
+				if (netconfig_get_default_profile() == NULL ||
+						netconfig_is_wifi_profile(netconfig_get_default_profile())
+						!= TRUE) {
+					if (g_str_equal(property, "failure") == TRUE)
+						netconfig_wifi_state_set_service_state(
+											NETCONFIG_WIFI_FAILURE);
+					else
+						netconfig_wifi_state_set_service_state(
+											NETCONFIG_WIFI_IDLE);
+					return;
+				}
 
-				g_strlcpy(current_profile, profile, sizeof(current_profile));
+				if (g_str_equal(service_profile, netconfig_get_default_profile())
+						!= TRUE)
+					return;
+
+				netconfig_update_default_profile(NULL);
+
+				if (g_str_equal(property, "failure") == TRUE)
+					netconfig_wifi_state_set_service_state(
+										NETCONFIG_WIFI_FAILURE);
+				else
+					netconfig_wifi_state_set_service_state(
+										NETCONFIG_WIFI_IDLE);
+
+			} else if (g_str_equal(property, "association") == TRUE ||
+					g_str_equal(property, "configuration") == TRUE) {
+				if (netconfig_get_default_profile() == NULL ||
+						netconfig_is_wifi_profile(netconfig_get_default_profile()) != TRUE) {
+					if (g_str_equal(property, "association") == TRUE)
+						netconfig_wifi_state_set_service_state(
+											NETCONFIG_WIFI_ASSOCIATION);
+					else
+						netconfig_wifi_state_set_service_state(
+											NETCONFIG_WIFI_CONFIGURATION);
+					return;
+				}
+
+				if (g_str_equal(service_profile, netconfig_get_default_profile()) != TRUE)
+					return;
+
+				netconfig_update_default_profile(NULL);
+
+				if (g_str_equal(property, "association") == TRUE)
+					netconfig_wifi_state_set_service_state(
+										NETCONFIG_WIFI_ASSOCIATION);
+				else
+					netconfig_wifi_state_set_service_state(
+										NETCONFIG_WIFI_CONFIGURATION);
+
 			}
-		} else if (g_str_equal(state, "failure") == TRUE ||
-				g_str_equal(state, "disconnect") == TRUE ||
-				g_str_equal(state, "idle") == TRUE) {
-			if ((g_str_equal(profile, current_profile)) != TRUE)
-				return;
+		} else {
+			if (g_str_equal(property, "ready") == TRUE ||
+					g_str_equal(property, "online") == TRUE) {
+				if (netconfig_get_default_profile() == NULL)
+					netconfig_update_default_profile(service_profile);
 
-			INFO("Wifi disconnected: %s", profile);
+				if (netconfig_is_cellular_profile(service_profile) == TRUE)
+					netconfig_cellular_state_set_service_state(NETCONFIG_CELLULAR_ONLINE);
+			} else if (g_str_equal(property, "failure") == TRUE ||
+					g_str_equal(property, "disconnect") == TRUE ||
+					g_str_equal(property, "idle") == TRUE) {
+				if (netconfig_get_default_profile() == NULL)
+					return;
 
-			if (wifi_state > VCONFKEY_WIFI_UNCONNECTED)
-				if ((vconf_set_int (VCONFKEY_WIFI_STATE, VCONFKEY_WIFI_UNCONNECTED)) < 0)
-					ERR("Error!!! vconf_set_int failed");
+				if (netconfig_is_cellular_profile(service_profile) == TRUE)
+					netconfig_cellular_state_set_service_state(NETCONFIG_CELLULAR_IDLE);
 
-			netconfig_wifi_state_set_service_state(NETCONFIG_WIFI_IDLE);
+				if (g_str_equal(service_profile, netconfig_get_default_profile()) != TRUE)
+					return;
 
-			netconfig_wifi_unset_essid();
+				netconfig_update_default_profile(NULL);
+			} else if (g_str_equal(property, "association") == TRUE ||
+					g_str_equal(property, "configuration") == TRUE) {
+				if (netconfig_get_default_profile() == NULL)
+					return;
 
-			netconfig_wifi_indicator_stop();
+				if (netconfig_is_cellular_profile(service_profile) == TRUE)
+					netconfig_cellular_state_set_service_state(NETCONFIG_CELLULAR_IDLE);
 
-			memset(current_profile, 0, sizeof(current_profile));
-		} else if (g_str_equal(state, "association") == TRUE ||
-				g_str_equal(state, "configuration") == TRUE) {
-			netconfig_wifi_state_set_service_state(NETCONFIG_WIFI_CONNECTING);
+				if (g_str_equal(service_profile, netconfig_get_default_profile()) != TRUE)
+					return;
+
+				netconfig_update_default_profile(NULL);
+			}
 		}
-	} else
-		DBG("Signaled profile [%s] has error to get its state", profile);
+	} else if (g_str_equal(sigvalue, "Proxy") == TRUE) {
+		dbus_message_iter_next(&args);
+		dbus_message_iter_recurse(&args, &variant);
+
+		if (netconfig_is_wifi_profile(service_profile) != TRUE ||
+				g_strcmp0(service_profile, netconfig_get_default_profile()) != 0)
+			return;
+
+		if (dbus_message_iter_get_arg_type(&variant) != DBUS_TYPE_ARRAY)
+			return;
+
+		dbus_message_iter_recurse(&variant, &iter1);
+		while (dbus_message_iter_get_arg_type(&iter1) ==
+				DBUS_TYPE_DICT_ENTRY) {
+			dbus_message_iter_recurse(&iter1, &iter2);
+			dbus_message_iter_get_basic(&iter2, &property);
+
+			if (g_strcmp0(property, "Servers") == 0) {
+				dbus_message_iter_next(&iter2);
+				dbus_message_iter_recurse(&iter2, &iter3);
+
+				if (dbus_message_iter_get_arg_type(&iter3) !=
+						DBUS_TYPE_ARRAY)
+					return;
+
+				dbus_message_iter_recurse(&iter3, &iter4);
+				if (dbus_message_iter_get_arg_type(&iter4) !=
+						DBUS_TYPE_STRING)
+					return;
+
+				dbus_message_iter_get_basic(&iter4, &value);
+				DBG("Proxy - [%s]", value);
+
+				vconf_set_str(VCONFKEY_NETWORK_PROXY, value);
+				break;
+			} else if (g_strcmp0(property, "Method") == 0) {
+				dbus_message_iter_next(&iter2);
+				dbus_message_iter_recurse(&iter2, &iter3);
+
+				if (dbus_message_iter_get_arg_type(&iter3) !=
+						DBUS_TYPE_STRING)
+					return;
+
+				dbus_message_iter_get_basic(&iter3, &value);
+				DBG("Method - [%s]", value);
+
+				if (g_strcmp0(value, "direct") == 0)
+					vconf_set_str(VCONFKEY_NETWORK_PROXY, "");
+
+				break;
+			}
+			dbus_message_iter_next(&iter1);
+		}
+	}
+}
+
+static void __netconfig_dbus_name_changed_signal_handler(DBusMessage *msg)
+{
+	char *name, *old, *new;
+
+	dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING, &name,
+			DBUS_TYPE_STRING, &old, DBUS_TYPE_STRING, &new);
+
+	if (g_strcmp0(name, CONNMAN_SERVICE) == 0 && *new == '\0') {
+		DBG("ConnMan destroyed: name %s, old %s, new %s", name, old, new);
+
+		netconfig_agent_register();
+	}
 }
 
 static DBusHandlerResult __netconfig_signal_filter_handler(
 		DBusConnection *conn, DBusMessage *msg, void *user_data)
 {
-	char *sigvalue = NULL;
-
 	if (msg == NULL) {
-		INFO("Invalid Message. Ignore");
-
-		/* We have handled this message, don't pass it on */
+		DBG("Invalid Message. Ignore");
 		return DBUS_HANDLER_RESULT_HANDLED;
 	}
 
-	if (dbus_message_is_signal(msg, CONNMAN_MANAGER_INTERFACE,
+	if (dbus_message_is_signal(msg, CONNMAN_TECHNOLOGY_INTERFACE,
 			CONNMAN_SIGNAL_PROPERTY_CHANGED)) {
-		/* We have handled this message, don't pass it on */
-		return DBUS_HANDLER_RESULT_HANDLED;
-	} else if (dbus_message_is_signal(msg, CONNMAN_MANAGER_INTERFACE,
-			CONNMAN_SIGNAL_SCAN_COMPLETED)) {
-		DBusMessageIter args;
-		dbus_bool_t val = FALSE;
-		int qs_enable = 0;
-		int wifi_state = 0;
-		int ug_state = 0;
+		__netconfig_technology_signal_handler(msg);
 
-		if (vconf_get_int(VCONFKEY_WIFI_ENABLE_QS, &qs_enable) < 0) {
-			DBG("failed to get vconf");
-			return DBUS_HANDLER_RESULT_HANDLED;
-		}
-
-		if (qs_enable) {
-			if (vconf_get_int(VCONFKEY_WIFI_STATE, &wifi_state) < 0) {
-				DBG("failed to get vconf");
-				return DBUS_HANDLER_RESULT_HANDLED;
-			}
-
-			if (wifi_state == VCONFKEY_WIFI_CONNECTED) {
-				DBG("Wi-Fi is Connected");
-				return DBUS_HANDLER_RESULT_HANDLED;
-			}
-
-			if (vconf_get_int(VCONFKEY_WIFI_UG_RUN_STATE, &ug_state) < 0) {
-				DBG("failed to get vconf");
-				return DBUS_HANDLER_RESULT_HANDLED;
-			}
-
-			if (ug_state == VCONFKEY_WIFI_UG_RUN_STATE_ON_FOREGROUND) {
-				DBG("Wi-Fi UG is running on foreground");
-				return DBUS_HANDLER_RESULT_HANDLED;
-			}
-
-			if (!dbus_message_iter_init(msg, &args)) {
-				DBG("Message does not have parameters");
-			} else if (dbus_message_iter_get_arg_type(&args) != DBUS_TYPE_BOOLEAN) {
-				DBG("Argument is not boolean");
-			} else {
-				dbus_message_iter_get_basic(&args, &val);
-				if (val)
-					netconfig_wifi_check_network_notification();
-			}
-		}
-		return DBUS_HANDLER_RESULT_HANDLED;
-	} else if (dbus_message_is_signal(msg, CONNMAN_TECHNOLOGY_INTERFACE,
-			CONNMAN_SIGNAL_PROPERTY_CHANGED)) {
-		char *property = NULL;
-		char *technology_path = NULL;
-
-		sigvalue = __netconfig_get_property(msg, &property);
-		if (sigvalue == NULL)
-			return DBUS_HANDLER_RESULT_HANDLED;
-
-		technology_path = (char *)dbus_message_get_path(msg);
-		INFO("technology object path: %s", technology_path);
-
-		if (g_str_has_prefix(technology_path,
-						CONNMAN_WIFI_TECHNOLOGY_PREFIX) == TRUE) {
-			__netconfig_wifi_technology_state_signal_handler(
-					(const char *)sigvalue, (const char *)property);
-			return DBUS_HANDLER_RESULT_HANDLED;
-		}
-
-		/* We have handled this message, don't pass it on */
 		return DBUS_HANDLER_RESULT_HANDLED;
 	} else if (dbus_message_is_signal(msg, CONNMAN_SERVICE_INTERFACE,
 			CONNMAN_SIGNAL_PROPERTY_CHANGED)) {
-		sigvalue = netconfig_dbus_get_string(msg);
+		__netconfig_service_signal_handler(msg);
 
-		if (sigvalue == NULL)
-			return DBUS_HANDLER_RESULT_HANDLED;
+		return DBUS_HANDLER_RESULT_HANDLED;
+	} else if (dbus_message_is_signal(msg, SUPPLICANT_INTERFACE,
+			SIGNAL_INTERFACE_REMOVED)) {
+		if (netconfig_wifi_is_wps_enabled() == TRUE)
+			netconfig_wifi_wps_signal_scanaborted();
 
-		if (g_str_equal(sigvalue, "State") == TRUE) {
-			char *service_profile = NULL;
+		return DBUS_HANDLER_RESULT_HANDLED;
+	} else if (dbus_message_is_signal(msg, SUPPLICANT_INTERFACE ".Interface",
+			SIGNAL_PROPERTIES_CHANGED)) {
+		dbus_bool_t scanning = FALSE;
+		void *property = &scanning;
 
-			service_profile = (char *)dbus_message_get_path(msg);
-			INFO("service profile: %s", service_profile);
-
-			if (g_str_has_prefix(service_profile,
-						CONNMAN_WIFI_SERVICE_PROFILE_PREFIX) == TRUE) {
-				__netconfig_wifi_service_state_signal_handler(
-							msg, service_profile);
-				return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
-			}
+		if (netconfig_dbus_get_basic_params_array(msg,
+							"Scanning", &property) == TRUE) {
+			if (scanning == TRUE)
+				netconfig_wifi_set_scanning(TRUE);
 		}
+
+		return DBUS_HANDLER_RESULT_HANDLED;
 	} else if (dbus_message_is_signal(msg, SUPPLICANT_INTERFACE ".Interface",
 			SIGNAL_BSS_ADDED)) {
 		if (netconfig_wifi_get_ssid_scan_state() == TRUE)
 			netconfig_wifi_bss_added(msg);
+		else
+			netconfig_wifi_set_bss_found(TRUE);
+
+		return DBUS_HANDLER_RESULT_HANDLED;
 	} else if (dbus_message_is_signal(msg, SUPPLICANT_INTERFACE ".Interface",
-			SIGNAL_SCAN_DONE))
-		netconfig_wifi_notify_ssid_scan_done(msg);
+			SIGNAL_SCAN_DONE)) {
+		netconfig_wifi_set_scanning(FALSE);
+
+		if (netconfig_wifi_is_wps_enabled() == TRUE) {
+			netconfig_wifi_wps_signal_scandone();
+			if (netconfig_wifi_state_get_technology_state() <
+									NETCONFIG_WIFI_TECH_POWERED)
+				return DBUS_HANDLER_RESULT_HANDLED;
+		}
+
+		if (netconfig_wifi_get_bgscan_state() != TRUE) {
+			if (netconfig_wifi_get_ssid_scan_state() == TRUE)
+				netconfig_wifi_notify_ssid_scan_done();
+			else
+				netconfig_wifi_ssid_scan(NULL);
+		} else {
+			if (netconfig_wifi_state_get_technology_state() >=
+										NETCONFIG_WIFI_TECH_POWERED)
+				netconfig_wifi_bgscan_start(FALSE);
+
+			netconfig_wifi_start_timer_network_notification();
+		}
+
+		return DBUS_HANDLER_RESULT_HANDLED;
+	} else if (dbus_message_is_signal(msg, SUPPLICANT_INTERFACE ".Interface",
+			SIGNAL_PROPERTIES_DRIVER_HANGED)) {
+		ERR("Critical. Wi-Fi firmware crashed");
+
+		netconfig_wifi_recover_firmware();
+
+		return DBUS_HANDLER_RESULT_HANDLED;
+	} else if (dbus_message_is_signal(msg, SUPPLICANT_INTERFACE ".Interface",
+			SIGNAL_PROPERTIES_SESSION_OVERLAPPED)) {
+		ERR("WPS PBC SESSION OVERLAPPED");
+#if !defined TIZEN_WEARABLE
+	netconfig_send_message_to_net_popup("WPS Error",
+						"wps session overlapped", "popup", NULL);
+#endif
+		return DBUS_HANDLER_RESULT_HANDLED;
+	} else if (dbus_message_is_signal(msg, DBUS_INTERFACE_DBUS,
+			"NameOwnerChanged")) {
+		__netconfig_dbus_name_changed_signal_handler(msg);
+
+		return DBUS_HANDLER_RESULT_HANDLED;
+	}
 
 	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 }
 
 void netconfig_register_signal(void)
 {
-	DBusConnection *conn = NULL;
 	DBusError err;
-
-	DBG("Register DBus signal filters");
+	DBusConnection *conn = NULL;
 
 	dbus_error_init(&err);
 	conn = dbus_bus_get(DBUS_BUS_SYSTEM, NULL);
 	if (conn == NULL) {
-		ERR("Error! Failed to connect to the D-BUS daemon: [%s]",
-				err.message);
+		ERR("Failed to get system bus [%s]", err.message);
 		dbus_error_free(&err);
 		return;
 	}
@@ -392,34 +444,85 @@ void netconfig_register_signal(void)
 
 	/* listening to messages from all objects as no path is specified */
 	/* see signals from the given interface */
-	dbus_bus_add_match(conn, CONNMAN_MANAGER_SIGNAL_FILTER, &err);
-	dbus_connection_flush(conn);
-	if (dbus_error_is_set(&err)) {
-		ERR("Error! Match Error (%s)", err.message);
-		dbus_error_free(&err);
-		return;
-	}
-
 	dbus_bus_add_match(conn, CONNMAN_TECHNOLOGY_SIGNAL_FILTER, &err);
 	dbus_connection_flush(conn);
 	if (dbus_error_is_set(&err)) {
-		ERR("Error! Match Error (%s)", err.message);
+		ERR("Match error (%s)", err.message);
 		dbus_error_free(&err);
 		return;
 	}
 
-	dbus_bus_add_match(conn, CONNMAN_SERVICE_SIGNAL_FILTER, &err);
+	dbus_bus_add_match(conn, CONNMAN_SERVICE_STATE_SIGNAL_FILTER, &err);
 	dbus_connection_flush(conn);
 	if (dbus_error_is_set(&err)) {
-		ERR("Error! Match Error (%s)", err.message);
+		ERR("Match error (%s)", err.message);
 		dbus_error_free(&err);
 		return;
 	}
 
-	dbus_bus_add_match(conn, SUPPLICANT_INTERFACE_SIGNAL_FILTER, &err);
+	dbus_bus_add_match(conn, CONNMAN_SERVICE_PROXY_SIGNAL_FILTER, &err);
 	dbus_connection_flush(conn);
 	if (dbus_error_is_set(&err)) {
-		ERR("Error! Match Error (%s)", err.message);
+		ERR("Match error (%s)", err.message);
+		dbus_error_free(&err);
+		return;
+	}
+
+	dbus_bus_add_match(conn, SUPPLICANT_INTERFACE_REMOVED_SIGNAL_FILTER, &err);
+	dbus_connection_flush(conn);
+	if (dbus_error_is_set(&err)) {
+		ERR("Match error (%s)", err.message);
+		dbus_error_free(&err);
+		return;
+	}
+
+	dbus_bus_add_match(conn,
+			SUPPLICANT_INTERFACE_PROPERTIESCHANGED_SIGNAL_FILTER, &err);
+	dbus_connection_flush(conn);
+	if (dbus_error_is_set(&err)) {
+		ERR("Match error (%s)", err.message);
+		dbus_error_free(&err);
+		return;
+	}
+
+	dbus_bus_add_match(conn, SUPPLICANT_INTERFACE_BSSADDED_SIGNAL_FILTER, &err);
+	dbus_connection_flush(conn);
+	if (dbus_error_is_set(&err)) {
+		ERR("Match error (%s)", err.message);
+		dbus_error_free(&err);
+		return;
+	}
+
+	dbus_bus_add_match(conn, SUPPLICANT_INTERFACE_SCANDONE_SIGNAL_FILTER, &err);
+	dbus_connection_flush(conn);
+	if (dbus_error_is_set(&err)) {
+		ERR("Match error (%s)", err.message);
+		dbus_error_free(&err);
+		return;
+	}
+
+	dbus_bus_add_match(conn,
+			SUPPLICANT_INTERFACE_DRIVERHANGED_SIGNAL_FILTER, &err);
+	dbus_connection_flush(conn);
+	if (dbus_error_is_set(&err)) {
+		ERR("Match error (%s)", err.message);
+		dbus_error_free(&err);
+		return;
+	}
+
+	dbus_bus_add_match(conn,
+			SUPPLICANT_INTERFACE_SESSIONOVERLAPPED_SIGNAL_FILTER, &err);
+	dbus_connection_flush(conn);
+	if (dbus_error_is_set(&err)) {
+		ERR("Match error (%s)", err.message);
+		dbus_error_free(&err);
+		return;
+	}
+
+	dbus_bus_add_match(conn, CONNMAN_SERVICE_NAMECHANGED_SIGNAL_FILTER, &err);
+	dbus_connection_flush(conn);
+	if (dbus_error_is_set(&err)) {
+		ERR("Match error (%s)", err.message);
 		dbus_error_free(&err);
 		return;
 	}
@@ -430,13 +533,18 @@ void netconfig_register_signal(void)
 		return;
 	}
 
-	INFO("Successfully register signal filters");
+	INFO("Successfully register DBus signal filters");
+
+	/* In case ConnMan precedes this signal register,
+	 * net-config should update the default connected profile.
+	 */
+	netconfig_update_default();
 }
 
 void netconfig_deregister_signal(void)
 {
 	if (signal_connection == NULL) {
-		ERR("Error! Already de-registered. Nothing to be done");
+		ERR("Already de-registered. Nothing to be done");
 		return;
 	}
 

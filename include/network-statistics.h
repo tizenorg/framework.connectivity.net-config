@@ -17,8 +17,8 @@
  *
  */
 
-#ifndef NETWORK_STATISTICS_H_
-#define NETWORK_STATISTICS_H_
+#ifndef __NETWORK_STATISTICS_H__
+#define __NETWORK_STATISTICS_H__
 
 #ifdef __cplusplus
 extern "C" {
@@ -27,47 +27,73 @@ extern "C" {
 #include <glib-object.h>
 #include <dbus/dbus-glib.h>
 
-#include <wifi-state.h>
+#include "wifi-state.h"
 
 G_BEGIN_DECLS
 
 typedef struct NetconfigNetworkStatistics	NetconfigNetworkStatistics;
 typedef struct NetconfigNetworkStatisticsClass	NetconfigNetworkStatisticsClass;
 
-#define NETCONFIG_TYPE_NETWORK_STATISTICS	( netconfig_network_statistics_get_type() )
-#define NETCONFIG_NETWORK_STATISTICS(obj)	( G_TYPE_CHECK_INSTANCE_CAST( (obj),NETCONFIG_TYPE_NETWORK_STATISTICS, NetconfigNetworkStatistics ) )
-#define NETCONFIG_IS_NETWORK_STATISTICS(obj)	(G_TYPE_CHECK_INSTANCE_TYPE( (obj), NETCONFIG_TYPE_NETWORK_STATISTICS) )
+#define NETCONFIG_TYPE_NETWORK_STATISTICS \
+	( netconfig_network_statistics_get_type() )
+#define NETCONFIG_NETWORK_STATISTICS(obj) \
+	( G_TYPE_CHECK_INSTANCE_CAST((obj), NETCONFIG_TYPE_NETWORK_STATISTICS, \
+			NetconfigNetworkStatistics) )
+#define NETCONFIG_IS_NETWORK_STATISTICS(obj) \
+	( G_TYPE_CHECK_INSTANCE_TYPE((obj), NETCONFIG_TYPE_NETWORK_STATISTICS) )
 
-#define NETCONFIG_NETWORK_STATISTICS_CLASS(klass)	( G_TYPE_CHECK_CLASS_CAST( (klass), NETCONFIG_TYPE_NETWORK_STATISTICS, NetconfigNetworkStatisticsClass) )
-#define NETCONFIG_IS_NETWORK_STATISTICS_CLASS(klass)	( G_TYPE_CHECK_CLASS_TYPE( (klass), NETCONFIG_TYPE_NETWORK_STATISTICS) )
-#define NETCONFIG_NETWORK_STATISTICS_GET_CLASS(obj)	( G_TYPE_INSTANCE_GET_CLASS( (obj), NETCONFIG_TYPE_NETWORK_STATISTICS, NetconfigNetworkStatisticsClass ) )
+#define NETCONFIG_NETWORK_STATISTICS_CLASS(klass) \
+	( G_TYPE_CHECK_CLASS_CAST((klass), NETCONFIG_TYPE_NETWORK_STATISTICS, \
+			NetconfigNetworkStatisticsClass) )
+#define NETCONFIG_IS_NETWORK_STATISTICS_CLASS(klass) \
+	( G_TYPE_CHECK_CLASS_TYPE((klass), NETCONFIG_TYPE_NETWORK_STATISTICS) )
+#define NETCONFIG_NETWORK_STATISTICS_GET_CLASS(obj) \
+	( G_TYPE_INSTANCE_GET_CLASS((obj), NETCONFIG_TYPE_NETWORK_STATISTICS, \
+			NetconfigNetworkStatisticsClass) )
 
 GType netconfig_network_statistics_get_type(void);
 
-gpointer netconfig_network_statistics_create_and_init(DBusGConnection *conn);
-
-
-gboolean netconfig_iface_network_statistics_get_wifi_total_tx_bytes(NetconfigNetworkStatistics *network_statistics, guint64 *total_bytes, GError **error);
-gboolean netconfig_iface_network_statistics_get_wifi_total_rx_bytes(NetconfigNetworkStatistics *network_statistics, guint64 *total_bytes, GError **error);
-gboolean netconfig_iface_network_statistics_get_wifi_last_tx_bytes(NetconfigNetworkStatistics *network_statistics, guint64 *last_bytes, GError **error);
-gboolean netconfig_iface_network_statistics_get_wifi_last_rx_bytes(NetconfigNetworkStatistics *network_statistics, guint64 *last_bytes, GError **error);
-
-gboolean netconfig_iface_network_statistics_reset_cellular_total_tx_bytes(NetconfigNetworkStatistics *network_statistics, GError **error);
-gboolean netconfig_iface_network_statistics_reset_cellular_total_rx_bytes(NetconfigNetworkStatistics *network_statistics, GError **error);
-gboolean netconfig_iface_network_statistics_reset_cellular_last_tx_bytes(NetconfigNetworkStatistics *network_statistics, GError **error);
-gboolean netconfig_iface_network_statistics_reset_cellular_last_rx_bytes(NetconfigNetworkStatistics *network_statistics, GError **error);
-
-gboolean netconfig_iface_network_statistics_reset_wifi_total_tx_bytes(NetconfigNetworkStatistics *network_statistics, GError **error);
-gboolean netconfig_iface_network_statistics_reset_wifi_total_rx_bytes(NetconfigNetworkStatistics *network_statistics, GError **error);
-gboolean netconfig_iface_network_statistics_reset_wifi_last_tx_bytes(NetconfigNetworkStatistics *network_statistics, GError **error);
-gboolean netconfig_iface_network_statistics_reset_wifi_last_rx_bytes(NetconfigNetworkStatistics *network_statistics, GError **error);
-
-void netconfig_wifi_statistics_update_powered_off(void);
+gpointer netconfig_network_statistics_create_and_init(
+		DBusGConnection *connection);
 
 G_END_DECLS
+
+gboolean netconfig_iface_network_statistics_get_wifi_total_tx_bytes(
+		NetconfigNetworkStatistics *network_statistics,
+		guint64 *total_bytes, GError **error);
+gboolean netconfig_iface_network_statistics_get_wifi_total_rx_bytes(
+		NetconfigNetworkStatistics *network_statistics,
+		guint64 *total_bytes, GError **error);
+gboolean netconfig_iface_network_statistics_get_wifi_last_tx_bytes(
+		NetconfigNetworkStatistics *network_statistics,
+		guint64 *last_bytes, GError **error);
+gboolean netconfig_iface_network_statistics_get_wifi_last_rx_bytes(
+		NetconfigNetworkStatistics *network_statistics,
+		guint64 *last_bytes, GError **error);
+
+gboolean netconfig_iface_network_statistics_reset_cellular_total_tx_bytes(
+		NetconfigNetworkStatistics *network_statistics, GError **error);
+gboolean netconfig_iface_network_statistics_reset_cellular_total_rx_bytes(
+		NetconfigNetworkStatistics *network_statistics, GError **error);
+gboolean netconfig_iface_network_statistics_reset_cellular_last_tx_bytes(
+		NetconfigNetworkStatistics *network_statistics, GError **error);
+gboolean netconfig_iface_network_statistics_reset_cellular_last_rx_bytes(
+		NetconfigNetworkStatistics *network_statistics, GError **error);
+
+gboolean netconfig_iface_network_statistics_reset_wifi_total_tx_bytes(
+		NetconfigNetworkStatistics *network_statistics, GError **error);
+gboolean netconfig_iface_network_statistics_reset_wifi_total_rx_bytes(
+		NetconfigNetworkStatistics *network_statistics, GError **error);
+gboolean netconfig_iface_network_statistics_reset_wifi_last_tx_bytes(
+		NetconfigNetworkStatistics *network_statistics, GError **error);
+gboolean netconfig_iface_network_statistics_reset_wifi_last_rx_bytes(
+		NetconfigNetworkStatistics *network_statistics, GError **error);
+
+gboolean netconfig_wifi_get_bytes_statistics(guint64 *tx, guint64 *rx);
+void netconfig_wifi_statistics_update_powered_off(void);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* NETWORK_STATISTICS_H_ */
+#endif /* __NETWORK_STATISTICS_H__ */

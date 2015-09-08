@@ -17,8 +17,8 @@
  *
  */
 
-#ifndef MDM_PRIVATE_H_
-#define MDM_PRIVATE_H_
+#ifndef __MDM_PRIVATE_H__
+#define __MDM_PRIVATE_H__
 
 #ifdef __cplusplus
 extern "C" {
@@ -26,10 +26,11 @@ extern "C" {
 
 #include <glib.h>
 
-gboolean netconfig_is_wifi_allowed(void);
+static inline gboolean netconfig_is_wifi_allowed(void) { return TRUE; }
+static inline void netconfig_check_allowed_ap(const char *path) { return; }
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* MDM_PRIVATE_H_ */
+#endif /* __MDM_PRIVATE_H__ */

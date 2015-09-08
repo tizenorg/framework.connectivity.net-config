@@ -20,24 +20,36 @@
 #ifndef __NETCONFIG_NETDBUS_H__
 #define __NETCONFIG_NETDBUS_H__
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include <glib.h>
 #include <dbus/dbus.h>
 #include <dbus/dbus-glib.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+#define NETCONFIG_SERVICE				"net.netconfig"
+
 #define CONNMAN_SERVICE					"net.connman"
 #define CONNMAN_PATH					"/net/connman"
 
+#define CONNMAN_CLOCK_INTERFACE			CONNMAN_SERVICE ".Clock"
+#define CONNMAN_ERROR_INTERFACE			CONNMAN_SERVICE ".Error"
 #define CONNMAN_MANAGER_INTERFACE		CONNMAN_SERVICE ".Manager"
 #define CONNMAN_SERVICE_INTERFACE		CONNMAN_SERVICE ".Service"
 #define CONNMAN_TECHNOLOGY_INTERFACE	CONNMAN_SERVICE ".Technology"
 #define CONNMAN_MANAGER_PATH			"/"
 
+#define CONNMAN_CELLULAR_SERVICE_PROFILE_PREFIX	CONNMAN_PATH "/service/cellular_"
 #define CONNMAN_WIFI_SERVICE_PROFILE_PREFIX		CONNMAN_PATH "/service/wifi_"
-#define CONNMAN_WIFI_TECHNOLOGY_PREFIX			CONNMAN_PATH "/technology/wifi"
+#define CONNMAN_ETHERNET_SERVICE_PROFILE_PREFIX	CONNMAN_PATH "/service/ethernet_"
+#define CONNMAN_BLUETOOTH_SERVICE_PROFILE_PREFIX \
+											CONNMAN_PATH "/service/bluetooth_"
+
+#define CONNMAN_CELLULAR_TECHNOLOGY_PREFIX	CONNMAN_PATH "/technology/cellular"
+#define CONNMAN_WIFI_TECHNOLOGY_PREFIX		CONNMAN_PATH "/technology/wifi"
+#define CONNMAN_ETHERNET_TECHNOLOGY_PREFIX	CONNMAN_PATH "/technology/ethernet"
+#define CONNMAN_BLUETOOTH_TECHNOLOGY_PREFIX	CONNMAN_PATH "/technology/bluetooth"
 
 #define NETCONFIG_WIFI_INTERFACE		"net.netconfig.wifi"
 #define NETCONFIG_WIFI_PATH				"/net/netconfig/wifi"
@@ -50,12 +62,23 @@ typedef enum {
 	NETCONFIG_DBUS_RESULT_DEFAULT_TECHNOLOGY,
 } netconfig_dbus_result_type;
 
-char *netconfig_wifi_get_connected_service_name(DBusMessage *message);
+gboolean netconfig_is_cellular_internet_profile(const char *profile);
+gboolean netconfig_is_cellular_profile(const char *profile);
+gboolean netconfig_is_wifi_profile(const char *profile);
+gboolean netconfig_is_ethernet_profile(const char *profile);
+gboolean netconfig_is_bluetooth_profile(const char *profile);
+
+gboolean netconfig_invoke_dbus_method_nonblock(
+		const char *dest, const char *path,
+		const char *interface_name, const char *method, char *param_array[],
+		DBusPendingCallNotifyFunction notify_func);
 DBusMessage *netconfig_invoke_dbus_method(const char *dest, const char *path,
 		const char *interface_name, const char *method, char *param_array[]);
-void netconfig_dbus_parse_recursive(DBusMessageIter *iter,
-		netconfig_dbus_result_type result_type, void *data);
-char *netconfig_dbus_get_string(DBusMessage *msg);
+
+gboolean netconfig_dbus_get_basic_params_string(DBusMessage *message,
+		char **key, int type, void *value);
+gboolean netconfig_dbus_get_basic_params_array(DBusMessage *message,
+		const char *key, void **value);
 
 DBusGConnection *netconfig_setup_dbus(void);
 

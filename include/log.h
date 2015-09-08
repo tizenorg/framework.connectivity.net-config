@@ -25,21 +25,19 @@ extern "C" {
 #endif
 
 #include <dlog.h>
-#include <stdio.h>
 #include <string.h>
+
+#define NETCONFIG_DEBUG_FILE (1)
+
+void __netconfig_debug(const char *format, ...);
 
 #define __LOG(level, format, arg...) \
 	do { \
-		char *ch = strrchr(__FILE__, '/'); \
-		ch = ch ? ch + 1 : __FILE__; \
-		SLOG(level, PACKAGE, "%s:%s() "format"\n", ch, __FUNCTION__, ## arg); \
-	} while(0)
-
-#define __PRT(level, format, arg...) \
-	do { \
-		char *ch = strrchr(__FILE__, '/'); \
-		ch = ch ? ch + 1 : __FILE__; \
-		fprintf(stderr, PACKAGE": %s:%s() "format"\n", ch, __FUNCTION__, ## arg); \
+		if (NETCONFIG_DEBUG_FILE) { \
+			__netconfig_debug("%s "format"\n", __FUNCTION__, ## arg); \
+		} else { \
+			SLOG(level, PACKAGE, "%s "format"\n", __FUNCTION__, ## arg); \
+		} \
 	} while(0)
 
 #define DBG(format, arg...)		__LOG(LOG_DEBUG, format, ## arg)

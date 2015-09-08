@@ -18,13 +18,23 @@
  */
 
 #include "log.h"
+#include "util.h"
 #include "neterror.h"
 #include "netdbus.h"
 #include "netsupplicant.h"
 #include "wifi-ssid-scan.h"
+#include "wifi-background-scan.h"
+
+enum netconfig_wifi_security {
+	WIFI_SECURITY_UNKNOWN = 0x00,
+	WIFI_SECURITY_NONE = 0x01,
+	WIFI_SECURITY_WEP = 0x02,
+	WIFI_SECURITY_PSK = 0x03,
+	WIFI_SECURITY_IEEE8021X = 0x04,
+};
 
 struct bss_info_t {
-	unsigned char ssid[32];
+	unsigned char ssid[33];
 	enum netconfig_wifi_security security;
 	dbus_bool_t privacy;
 	dbus_bool_t wps;
@@ -32,15 +42,33 @@ struct bss_info_t {
 
 static gboolean wifi_ssid_scan_state = FALSE;
 static GSList *wifi_bss_info_list = NULL;
+static guint netconfig_wifi_ssid_scan_timer = 0;
+static char *g_ssid = NULL;
 
-static void __netconfig_wifi_ssid_scan_start(void)
+static gboolean __netconfig_wifi_ssid_scan_timeout(gpointer data)
 {
-	wifi_ssid_scan_state = TRUE;
+	netconfig_wifi_notify_ssid_scan_done();
+
+	return FALSE;
 }
 
-static void __netconfig_wifi_ssid_scan_stop(void)
+static void __netconfig_wifi_ssid_scan_started(void)
 {
+	INFO("Wi-Fi SSID scan started");
+	wifi_ssid_scan_state = TRUE;
+
+	netconfig_start_timer_seconds(5,
+			__netconfig_wifi_ssid_scan_timeout,
+			NULL,
+			&netconfig_wifi_ssid_scan_timer);
+}
+
+static void __netconfig_wifi_ssid_scan_finished(void)
+{
+	INFO("Wi-Fi SSID scan finished");
 	wifi_ssid_scan_state = FALSE;
+
+	netconfig_stop_timer(&netconfig_wifi_ssid_scan_timer);
 }
 
 static gboolean __netconfig_wifi_invoke_ssid_scan(
@@ -56,14 +84,13 @@ static gboolean __netconfig_wifi_invoke_ssid_scan(
 	DBusMessageIter iter, dict, entry;
 	DBusMessageIter value, array, array2;
 	DBusError error;
-	int MessageType = 0;
 	const char *key1 = "Type";
 	const char *val1 = "active";
 	const char *key2 = "SSIDs";
 
 	connection = dbus_bus_get(DBUS_BUS_SYSTEM, NULL);
 	if (connection == NULL) {
-		ERR("Error!!! Failed to get system DBus");
+		ERR("Failed to get system DBus");
 		goto error;
 	}
 
@@ -131,14 +158,16 @@ static gboolean __netconfig_wifi_invoke_ssid_scan(
 		goto error;
 	}
 
-	MessageType = dbus_message_get_type(reply);
-	if (MessageType == DBUS_MESSAGE_TYPE_ERROR) {
+	if (dbus_message_get_type(reply) == DBUS_MESSAGE_TYPE_ERROR) {
 		const char *err_msg = dbus_message_get_error_name(reply);
 		ERR("Error!!! Error message received %s", err_msg);
 		goto error;
 	}
 
-	INFO("Message type :%d", MessageType);
+	if (g_ssid != NULL) {
+		g_free(g_ssid);
+	}
+	g_ssid = g_strdup(ssid);
 
 	dbus_message_unref(message);
 	dbus_message_unref(reply);
@@ -165,16 +194,18 @@ static void __netconfig_wifi_notify_ssid_scan_done(void)
 	DBusConnection *connection = NULL;
 	DBusMessageIter dict, type, array, value;
 	DBusError error;
-	char *prop_ssid = "ssid";
-	char *prop_security = "security";
+
+	GSList* list = NULL;
+	const char *prop_ssid = "ssid";
+	const char *prop_security = "security";
+	const char *prop_wps = "wps";
 	const char *sig_name = "SpecificScanCompleted";
 
 	dbus_error_init(&error);
 
 	connection = dbus_bus_get(DBUS_BUS_SYSTEM, &error);
 	if (connection == NULL) {
-		/* TODO: If this occurs then UG should be informed abt SCAN fail. CHECK THIS. */
-		ERR("Error!!! Failed to get system DBus, error [%s]", error.message);
+		ERR("Failed to get system DBus, error [%s]", error.message);
 		dbus_error_free(&error);
 
 		g_slist_free_full(wifi_bss_info_list, g_free);
@@ -185,7 +216,6 @@ static void __netconfig_wifi_notify_ssid_scan_done(void)
 
 	signal = dbus_message_new_signal(NETCONFIG_WIFI_PATH, NETCONFIG_WIFI_INTERFACE, sig_name);
 	if (signal == NULL) {
-		/* TODO: If this occurs then UG should be informed abt SCAN fail. CHECK THIS. */
 		dbus_connection_unref(connection);
 
 		g_slist_free_full(wifi_bss_info_list, g_free);
@@ -196,16 +226,17 @@ static void __netconfig_wifi_notify_ssid_scan_done(void)
 
 	dbus_message_iter_init_append(signal, &array);
 	dbus_message_iter_open_container(&array, DBUS_TYPE_ARRAY, "{sv}", &dict);
-	GSList* list = wifi_bss_info_list;
-	while(list) {
-		struct bss_info_t *bss_info = (struct bss_info_t *)g_slist_nth_data(list, 0);
 
-		if (bss_info) {
-			char *ssid = (char *)&(bss_info->ssid[0]);
-			dbus_int16_t security = bss_info->security;
-			DBG("Bss found. SSID: %s; Sec mode: %d;", ssid, security);
+	for (list = wifi_bss_info_list; list != NULL; list = list->next) {
+		struct bss_info_t *bss_info = (struct bss_info_t *)list->data;
 
-			/* Lets pack the SSID */
+		if (bss_info && g_strcmp0((char *)bss_info->ssid, g_ssid) == 0) {
+			char *ssid = (char *)bss_info->ssid;
+			enum netconfig_wifi_security security = bss_info->security;
+			dbus_bool_t wps = bss_info->wps;
+			DBG("BSS found; SSID:%s security:%d WPS:%d", ssid, security, wps);
+
+			/* SSID */
 			dbus_message_iter_open_container(&dict, DBUS_TYPE_DICT_ENTRY, 0, &type);
 			dbus_message_iter_append_basic(&type, DBUS_TYPE_STRING, &prop_ssid);
 			dbus_message_iter_open_container(&type, DBUS_TYPE_VARIANT, DBUS_TYPE_STRING_AS_STRING, &value);
@@ -214,21 +245,28 @@ static void __netconfig_wifi_notify_ssid_scan_done(void)
 			dbus_message_iter_close_container(&type, &value);
 			dbus_message_iter_close_container(&dict, &type);
 
-			/* Lets pack the Security */
+			/* Security */
 			dbus_message_iter_open_container(&dict, DBUS_TYPE_DICT_ENTRY, 0, &type);
 			dbus_message_iter_append_basic(&type, DBUS_TYPE_STRING, &prop_security);
-			dbus_message_iter_open_container(&type, DBUS_TYPE_VARIANT, DBUS_TYPE_INT16_AS_STRING, &value);
+			dbus_message_iter_open_container(&type, DBUS_TYPE_VARIANT, DBUS_TYPE_INT32_AS_STRING, &value);
 
-			dbus_message_iter_append_basic(&value, DBUS_TYPE_INT16, &security);
+			dbus_message_iter_append_basic(&value, DBUS_TYPE_INT32, &security);
+			dbus_message_iter_close_container(&type, &value);
+			dbus_message_iter_close_container(&dict, &type);
+
+			/* WPS */
+			dbus_message_iter_open_container(&dict, DBUS_TYPE_DICT_ENTRY, 0, &type);
+			dbus_message_iter_append_basic(&type, DBUS_TYPE_STRING, &prop_wps);
+			dbus_message_iter_open_container(&type, DBUS_TYPE_VARIANT, DBUS_TYPE_BOOLEAN_AS_STRING, &value);
+
+			dbus_message_iter_append_basic(&value, DBUS_TYPE_BOOLEAN, &wps);
 			dbus_message_iter_close_container(&type, &value);
 			dbus_message_iter_close_container(&dict, &type);
 		}
-		list = g_slist_next(list);
 	}
 
 	dbus_message_iter_close_container(&array, &dict);
 
-	dbus_error_init(&error);
 	dbus_connection_send(connection, signal, NULL);
 
 	dbus_message_unref(signal);
@@ -237,37 +275,12 @@ static void __netconfig_wifi_notify_ssid_scan_done(void)
 	g_slist_free_full(wifi_bss_info_list, g_free);
 	wifi_bss_info_list = NULL;
 
+	if (g_ssid != NULL) {
+		g_free(g_ssid);
+		g_ssid = NULL;
+	}
+
 	INFO("(%s)", sig_name);
-}
-
-static gboolean __netconfig_wifi_ssid_scan(const char *ssid)
-{
-	char object_path[DBUS_PATH_MAX_BUFLEN] = { 0, };
-	char *path_ptr = &object_path[0];
-
-	if (ssid == NULL)
-		return FALSE;
-
-	DBG("Start SSID Scan with %s", ssid);
-
-	if (wifi_bss_info_list) {
-		g_slist_free_full(wifi_bss_info_list, g_free);
-		wifi_bss_info_list = NULL;
-	}
-
-	if (netconfig_wifi_get_supplicant_interface(&path_ptr) != TRUE) {
-		DBG("Fail to get wpa_supplicant DBus path");
-		return FALSE;
-	}
-
-	if (__netconfig_wifi_invoke_ssid_scan(
-			(const char *)object_path, ssid) == TRUE) {
-		__netconfig_wifi_ssid_scan_start();
-
-		return TRUE;
-	}
-
-	return FALSE;
 }
 
 static void __netconfig_wifi_check_security(const char *str_keymgmt, struct bss_info_t *bss_data)
@@ -341,28 +354,14 @@ gboolean netconfig_wifi_get_ssid_scan_state(void)
 	return wifi_ssid_scan_state;
 }
 
-void netconfig_wifi_notify_ssid_scan_done(DBusMessage *message)
+void netconfig_wifi_notify_ssid_scan_done(void)
 {
-	DBusMessageIter args;
-	dbus_bool_t val = FALSE;
-
 	if (netconfig_wifi_get_ssid_scan_state() != TRUE)
 		return;
 
-	__netconfig_wifi_ssid_scan_stop();
+	__netconfig_wifi_ssid_scan_finished();
 
-	INFO("SSID scan finishes");
-
-	if (!dbus_message_iter_init(message, &args))
-		DBG("Message does not have parameters");
-	else if (dbus_message_iter_get_arg_type(&args) != DBUS_TYPE_BOOLEAN)
-		DBG("Argument is not boolean");
-	else {
-		dbus_message_iter_get_basic(&args, &val);
-		DBG("!!!!!!! SpecificScanDone : %d", val);
-
-		__netconfig_wifi_notify_ssid_scan_done();
-	}
+	__netconfig_wifi_notify_ssid_scan_done();
 }
 
 void netconfig_wifi_bss_added(DBusMessage *message)
@@ -390,6 +389,8 @@ void netconfig_wifi_bss_added(DBusMessage *message)
 	}
 
 	bss_info = g_try_new0(struct bss_info_t, 1);
+	if (bss_info == NULL)
+		return;
 
 	dbus_message_iter_recurse(&iter, &dict);
 	while (dbus_message_iter_get_arg_type(&dict) == DBUS_TYPE_DICT_ENTRY) {
@@ -438,7 +439,7 @@ void netconfig_wifi_bss_added(DBusMessage *message)
 		dbus_message_iter_next(&dict);
 	}
 
-	if (bss_info->ssid == NULL) {
+	if (bss_info->ssid[0] == '\0') {
 		g_free(bss_info);
 		return;
 	}
@@ -453,15 +454,64 @@ void netconfig_wifi_bss_added(DBusMessage *message)
 	wifi_bss_info_list = g_slist_append(wifi_bss_info_list, bss_info);
 }
 
+gboolean netconfig_wifi_ssid_scan(const char *ssid)
+{
+	const char *if_path;
+	static char *scan_ssid = NULL;
+
+	netconfig_wifi_bgscan_stop();
+
+	if (ssid != NULL) {
+		g_free(scan_ssid);
+		scan_ssid = g_strdup(ssid);
+	}
+
+	if (scan_ssid == NULL)
+		goto error;
+
+	if_path = netconfig_wifi_get_supplicant_interface();
+	if (if_path == NULL) {
+		DBG("Fail to get wpa_supplicant DBus path");
+		goto error;
+	}
+
+	if (netconfig_wifi_get_scanning() == TRUE) {
+		DBG("Wi-Fi scan in progress, %s scan will be delayed", scan_ssid);
+		return TRUE;
+	}
+
+	if (wifi_bss_info_list) {
+		g_slist_free_full(wifi_bss_info_list, g_free);
+		wifi_bss_info_list = NULL;
+	}
+
+	INFO("Start Wi-Fi scan with %s(%d)", scan_ssid, strlen(scan_ssid));
+	if (__netconfig_wifi_invoke_ssid_scan(if_path,
+							(const char *)scan_ssid) == TRUE) {
+		__netconfig_wifi_ssid_scan_started();
+
+		g_free(scan_ssid);
+		scan_ssid = NULL;
+
+		return TRUE;
+	}
+
+error:
+	if (scan_ssid != NULL) {
+		g_free(scan_ssid);
+		scan_ssid = NULL;
+	}
+
+	netconfig_wifi_bgscan_start(FALSE);
+
+	return FALSE;
+}
+
 gboolean netconfig_iface_wifi_request_specific_scan(NetconfigWifi *wifi,
 		gchar *ssid, GError **error)
 {
 	g_return_val_if_fail(wifi != NULL, FALSE);
+	g_return_val_if_fail(ssid != NULL, FALSE);
 
-	/* TODO: If already scan with SSID, make error in-progress */
-	/* if (netconfig_wifi_get_ssid_scan_state() != TRUE)
-	 *  		netconfig_error_ssid_scan_in_progress();
-	 */
-
-	return __netconfig_wifi_ssid_scan((const char *)ssid);
+	return netconfig_wifi_ssid_scan((const char *)ssid);
 }

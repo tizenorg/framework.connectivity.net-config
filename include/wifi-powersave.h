@@ -17,17 +17,24 @@
  *
  */
 
-#ifndef __NETCONFIG_H__
-#define __NETCONFIG_H__
+#ifndef __NETCONFIG_WIFI_POWERSAVE_H__
+#define __NETCONFIG_WIFI_POWERSAVE_H__
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-#define NETCONFIG_SERVICE	"net.netconfig"
+gboolean netconfig_wifi_is_powersave_mode(void);
+
+void netconfig_wifi_powersave_start(void);
+void netconfig_wifi_powersave_stop(void);
+
+void netconfig_wifi_powersave_init(void);
+void netconfig_wifi_powersave_deinit(void);
+void netconfig_wifi_early_suspend(gboolean value);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* __NETCONFIG_H__ */
+#endif /* __NETCONFIG_WIFI_POWERSAVE_H__ */

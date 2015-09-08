@@ -26,32 +26,25 @@ extern "C" {
 
 #include "glib.h"
 
-G_BEGIN_DECLS
+#define NETCONFIG_ERROR_QUARK (netconfig_error_quark())
+#define NETCONFIG_CONNMAN_AGENT_ERROR_QUARK (netconfig_connman_agent_error_quark())
 
-typedef enum {
-	NETCONFIG_NO_ERROR				= 0x00,
-	NETCONFIG_ERROR_INTERNAL 		= 0x01,
-	NETCONFIG_ERROR_NO_SERVICE 		= 0x02,
-	NETCONFIG_ERROR_TRASPORT 		= 0x03,
-	NETCONFIG_ERROR_NO_PROFILE 		= 0x04,
-	NETCONFIG_ERROR_WRONG_PROFILE 	= 0x05,
-	NETCONFIG_ERROR_WIFI_DRIVER_FAILURE = 0x06,
-	NETCONFIG_ERROR_SECURITY_RESTRICTED = 0x07,
-	NETCONFIG_ERROR_MAX 			= 0x08,
-} NETCONFIG_ERROR;
+void netconfig_error_inprogress(GError **error);
+void netconfig_error_already_exists(GError **error);
+void netconfig_error_invalid_parameter(GError **error);
+void netconfig_error_permission_denied(GError **error);
+void netconfig_error_wifi_driver_failed(GError **error);
+void netconfig_error_wifi_direct_failed(GError **error);
+void netconfig_error_fail_get_imsi(GError **error);
+void netconfig_error_fail_req_sim_auth(GError **error);
+void netconfig_error_fail_req_sim_auth_wrong_param(GError **error);
+void netconfig_error_fail_get_sim_auth_wrong_data(GError **error);
+void netconfig_error_fail_get_sim_auth_delay(GError **error);
 
-GQuark netconfig_error_quark(void);
-
-#define	NETCONFIG_ERROR_QUARK	(netconfig_error_quark())
-
-G_END_DECLS
+void netconfig_error_init(void);
 
 #ifdef __cplusplus
 }
 #endif
-
-void netconfig_error_wifi_driver_failed(GError **error);
-void netconfig_error_security_restricted(GError **error);
-void netconfig_error_wifi_direct_failed(GError **error);
 
 #endif /* __NETCONFIG_ERROR_H__ */

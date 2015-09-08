@@ -25,6 +25,7 @@ extern "C" {
 #endif
 
 int netconfig_wifi_get_rssi(void);
+int netconfig_wifi_rssi_level(const int rssi_dbm);
 
 void netconfig_wifi_indicator_start(void);
 void netconfig_wifi_indicator_stop(void);

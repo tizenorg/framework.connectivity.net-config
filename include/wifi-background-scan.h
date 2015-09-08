@@ -26,10 +26,22 @@ extern "C" {
 
 #include "wifi.h"
 
-void netconfig_wifi_bgscan_start(void);
+void netconfig_wifi_bgscan_start(gboolean immediate_scan);
 void netconfig_wifi_bgscan_stop(void);
+gboolean netconfig_wifi_get_bgscan_state(void);
 
-gboolean netconfig_iface_wifi_set_bgscan(NetconfigWifi *wifi, guint scan_mode, GError **error);
+gboolean netconfig_wifi_get_scanning(void);
+void netconfig_wifi_set_scanning(gboolean scanning);
+gboolean netconfig_wifi_is_bgscan_paused(void);
+void netconfig_wifi_set_bgscan_pause(gboolean pause);
+
+gboolean netconfig_iface_wifi_set_bgscan(
+		NetconfigWifi *wifi, guint scan_mode, GError **error);
+gboolean netconfig_iface_wifi_resume_bgscan(
+		NetconfigWifi *wifi, GError **error);
+gboolean netconfig_iface_wifi_pause_bgscan(
+		NetconfigWifi *wifi, GError **error);
+
 
 #ifdef __cplusplus
 }

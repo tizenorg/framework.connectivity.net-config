@@ -1,0 +1,22 @@
+#!/bin/sh
+
+if [ -f /opt/etc/.mac.info ]; then
+	bssid="$(/usr/bin/vconftool get -t string db/wifi/bssid_address | /bin/sed -n "/\([0-9A-F][0-9A-F]:\)\{5\}[0-9A-F][0-9A-F]/p")"
+	fbssid="$(/bin/cat /opt/etc/.mac.info | /bin/sed -n "/\([0-9A-F][0-9A-F]:\)\{5\}[0-9A-F][0-9A-F]/p")"
+
+	if [ "$bssid" != "$fbssid" ]; then
+		/bin/cat /opt/etc/.mac.info | /bin/sed -n "/^\([0-9A-F][0-9A-F]:\)\{5\}[0-9A-F][0-9A-F]$/p" | /usr/bin/xargs /usr/bin/vconftool set -t string db/wifi/bssid_address -f
+	fi
+fi
+
+if [ ! -d /var/lib/net-config ]; then
+	/bin/mkdir -p /var/lib/net-config
+fi
+
+if [ ! -f /var/lib/net-config/.provisioned ]; then
+	/bin/cp -R /opt/system/csc-default/usr/wifi/preprofiles/* /var/lib/connman/
+	/bin/touch /var/lib/net-config/.provisioned
+fi
+
+/bin/rm /var/lib/wifi/.pseudonym.info
+/bin/rm /var/lib/wifi/.pseudonym_sim.info

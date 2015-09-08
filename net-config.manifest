@@ -1,0 +1,146 @@
+<manifest>
+	<define>
+		<domain name="net-config"/>
+		<request>
+			<smack request="dbus" type="rwx"/>
+			<smack request="connman" type="rwx"/>
+			<smack request="connman::set" type="rwx"/>
+			<smack request="connman::get" type="rwx"/>
+			<smack request="connman::profile" type="rwx"/>
+			<smack request="wpasupplicant" type="rwx"/>
+			<smack request="deviced::power" type="rwx"/>
+			<smack request="deviced::display" type="rwx"/>
+			<smack request="telephony_framework::api_private" type="rwx"/>
+			<smack request="telephony_framework::api_sim" type="rwx"/>
+			<smack request="system::use_internet" type="rwx"/>
+			<smack request="system::vconf_system" type="rwx"/>
+			<smack request="system::vconf_network" type="rwx"/>
+			<smack request="system::vconf_setting" type="rwx"/>
+		</request>
+		<permit>
+			<smack permit="dbus" type="rwx"/>
+			<smack permit="system::use_internet" type="rwx"/>
+		</permit>
+	</define>
+	<assign>
+		<filesystem path="/etc/resolv.conf" label="_"/>
+		<filesystem path="/usr/lib/systemd/system/net-config.service" label="_"/>
+		<filesystem path="/usr/lib/systemd/system/multi-user.target.wants/net-config.service" label="_"/>
+		<filesystem path="/usr/share/dbus-1/services/net.netconfig.service" label="_"/>
+		<filesystem path="/usr/sbin/net-config.service" label="_" exec_label="none"/>
+		<filesystem path="/usr/share/license/net-config" label="_"/>
+		<filesystem path="/opt/etc/dump.d/module.d/network_log_dump.sh" label="_" exec_label="none"/>
+		<dbus name="net.netconfig" own="net-config" bus="system">
+			<node name="/net/netconfig/*">
+			<interface name="net.netconfig.network">
+				<annotation name="net.netconfig.smack" value="net-config"/>
+				<method name="AddRoute">
+					<annotation name="net.netconfig.smack" value="connman::set"/>
+				</method>
+				<method name="RemoveRoute">
+					<annotation name="net.netconfig.smack" value="connman::set"/>
+				</method>
+				<method name="CheckGetPrivilege">
+					<annotation name="net.netconfig.smack" value="connman::get"/>
+				</method>
+				<method name="CheckProfilePrivilege">
+					<annotation name="net.netconfig.smack" value="connman::profile"/>
+				</method>
+			</interface>
+			<interface name="net.netconfig.network_statistics">
+				<annotation name="net.netconfig.smack" value="net-config"/>
+				<method name="GetWifiLastRxBytes">
+					<annotation name="net.netconfig.smack" value="connman::get"/>
+				</method>
+				<method name="GetWifiLastTxBytes">
+					<annotation name="net.netconfig.smack" value="connman::get"/>
+				</method>
+				<method name="GetWifiTotalRxBytes">
+					<annotation name="net.netconfig.smack" value="connman::get"/>
+				</method>
+				<method name="GetWifiTotalTxBytes">
+					<annotation name="net.netconfig.smack" value="connman::get"/>
+				</method>
+				<method name="ResetCellularLastRxBytes">
+					<annotation name="net.netconfig.smack" value="connman::set"/>
+				</method>
+				<method name="ResetCellularLastTxBytes">
+					<annotation name="net.netconfig.smack" value="connman::set"/>
+				</method>
+				<method name="ResetCellularTotalRxBytes">
+					<annotation name="net.netconfig.smack" value="connman::set"/>
+				</method>
+				<method name="ResetCellularTotalTxBytes">
+					<annotation name="net.netconfig.smack" value="connman::set"/>
+				</method>
+				<method name="ResetWifiLastRxBytes">
+					<annotation name="net.netconfig.smack" value="connman::set"/>
+				</method>
+				<method name="ResetWifiLastTxBytes">
+					<annotation name="net.netconfig.smack" value="connman::set"/>
+				</method>
+				<method name="ResetWifiTotalRxBytes">
+					<annotation name="net.netconfig.smack" value="connman::set"/>
+				</method>
+				<method name="ResetWifiTotalTxBytes">
+					<annotation name="net.netconfig.smack" value="connman::set"/>
+				</method>
+			</interface>
+			<interface name="net.netconfig.wifi">
+				<annotation name="net.netconfig.smack" value="net-config"/>
+				<method name="DeleteConfig">
+					<annotation name="net.netconfig.smack" value="connman::profile"/>
+				</method>
+				<method name="RequestSpecificScan">
+					<annotation name="net.netconfig.smack" value="connman::set"/>
+				</method>
+				<method name="RequestWpsScan">
+					<annotation name="net.netconfig.smack" value="connman::set"/>
+				</method>
+				<method name="CreateConfig">
+					<annotation name="net.netconfig.smack" value="connman::profile"/>
+				</method>
+				<method name="LoadDriver">
+					<annotation name="net.netconfig.smack" value="connman::set"/>
+				</method>
+				<method name="LaunchDirect">
+					<annotation name="net.netconfig.smack" value="wifi-direct"/>
+				</method>
+				<method name="RemoveDriver">
+					<annotation name="net.netconfig.smack" value="connman::set"/>
+				</method>
+				<method name="SetBgscan">
+					<annotation name="net.netconfig.smack" value="connman::set"/>
+				</method>
+				<method name="ResumeBgscan">
+					<annotation name="net.netconfig.smack" value="connman::set"/>
+				</method>
+				<method name="PauseBgscan">
+					<annotation name="net.netconfig.smack" value="connman::set"/>
+				</method>
+				<signal name="PowerOnCompleted">
+					<annotation name="net.netconfig.smack" value="connman::get"/>
+				</signal>
+				<signal name="PowerOffCompleted">
+					<annotation name="net.netconfig.smack" value="connman::get"/>
+				</signal>
+				<signal name="SpecificScanCompleted">
+					<annotation name="net.netconfig.smack" value="connman::get"/>
+				</signal>
+				<signal name="WpsScanCompleted">
+					<annotation name="net.netconfig.smack" value="connman::get"/>
+				</signal>
+			</interface>
+			<interface name="net.connman.Agent">
+				<annotation name="net.netconfig.smack" value="net-config"/>
+				<method name="SetField">
+					<annotation name="net.netconfig.smack" value="connman::profile"/>
+				</method>
+			</interface>
+			</node>
+		</dbus>
+	</assign>
+	<request>
+		<domain name="net-config"/>
+	</request>
+</manifest>

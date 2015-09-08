@@ -17,28 +17,49 @@
  *
  */
 
+#include <errno.h>
 #include <unistd.h>
+#include <sys/stat.h>
 
 #include "log.h"
 #include "wifi.h"
-#include "emulator.h"
 #include "netdbus.h"
+#include "emulator.h"
+#include "neterror.h"
+#include "wifi-agent.h"
+#include "wifi-power.h"
+#include "network-clock.h"
 #include "network-state.h"
-#include "network-statistics.h"
 #include "signal-handler.h"
+#include "network-statistics.h"
 
 static GMainLoop *main_loop = NULL;
 
-int main(int argc, char* argv[])
+int main(int argc, char *argv[])
 {
 	DBusGConnection *connection;
 
-	DBG("Network Configuration Module");
+	umask(0077);
 
+	DBG("Network Configuration service");
 	if (daemon(0, 0) != 0)
 		DBG("Cannot start daemon");
 
+	if (mkdir(WIFI_STORAGEDIR, S_IRUSR | S_IWUSR | S_IXUSR |
+			S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH) < 0) {
+		if (errno != EEXIST)
+			ERR("Failed to create Wi-Fi directory");
+	}
+
+	if (mkdir(WIFI_CERT_STORAGEDIR, S_IRUSR | S_IWUSR | S_IXUSR |
+			S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH) < 0) {
+		if (errno != EEXIST)
+			ERR("Failed to create cert directory");
+	}
+
+#if !GLIB_CHECK_VERSION(2,36,0)
 	g_type_init();
+#endif
 
 	main_loop = g_main_loop_new(NULL, FALSE);
 
@@ -46,24 +67,33 @@ int main(int argc, char* argv[])
 	if (connection == NULL)
 		return -1;
 
-	if (netconfig_network_state_create_and_init(connection) == NULL)
-		return -1;
-
 	netconfig_register_signal();
+
+	netconfig_agent_register();
+
+	netconfig_wifi_fetch_airplane_mode();
 
 	if (netconfig_wifi_create_and_init(connection) == NULL)
 		return -1;
 
+	if (netconfig_network_state_create_and_init(connection) == NULL)
+		return -1;
+
 	if (netconfig_network_statistics_create_and_init(connection) == NULL)
 		return -1;
+
+	netconfig_error_init();
 
 	/* If its environment uses Emulator, network configuration is set by emulator default */
 	netconfig_emulator_test_and_start();
 
 	g_main_loop_run(main_loop);
 
-	netconfig_wifi_state_notifier_cleanup();
 	netconfig_deregister_signal();
+	netconfig_wifi_state_notifier_cleanup();
+
+	/* Unregistering the agent */
+	netconfig_agent_unregister();
 
 	return 0;
 }
