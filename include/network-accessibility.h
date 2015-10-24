@@ -24,6 +24,9 @@
 extern "C" {
 #endif
 
+void netconfig_internet_accessibility_init(void);
+void netconfig_internet_accessibility_deinit(void);
+
 void netconfig_check_internet_accessibility(void);
 void netconfig_stop_internet_check(void);
 

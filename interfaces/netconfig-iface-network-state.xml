@@ -17,6 +17,9 @@
 			<arg  type="i" name="address_family" direction="in"/>
 			<arg type="b" name="result" direction="out"/>
 		</method>
+		<method name="EthernetCableState">
+			<arg  type="i" name="state" direction="out"/>
+		</method>
 		<method name="CheckGetPrivilege"></method>
 		<method name="CheckProfilePrivilege"></method>
 	</interface>

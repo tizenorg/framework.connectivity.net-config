@@ -1,0 +1,5 @@
+[D-BUS Service]
+Name=net.netconfig
+Exec=/bin/false
+SystemdService=net-config.service
+User=root

@@ -1,35 +1,64 @@
 <manifest>
 	<define>
 		<domain name="net-config"/>
+		<provide>
+			<label name="net-config::logging"/>
+		</provide>
 		<request>
+			<smack request="aul" type="rwx"/>
 			<smack request="dbus" type="rwx"/>
 			<smack request="connman" type="rwx"/>
 			<smack request="connman::set" type="rwx"/>
 			<smack request="connman::get" type="rwx"/>
 			<smack request="connman::profile" type="rwx"/>
+			<smack request="weconn" type="rwx"/>
+			<smack request="wifi-direct" type="rwx"/>
 			<smack request="wpasupplicant" type="rwx"/>
 			<smack request="deviced::power" type="rwx"/>
 			<smack request="deviced::display" type="rwx"/>
-			<smack request="telephony_framework::api_private" type="rwx"/>
-			<smack request="telephony_framework::api_sim" type="rwx"/>
 			<smack request="system::use_internet" type="rwx"/>
-			<smack request="system::vconf_system" type="rwx"/>
-			<smack request="system::vconf_network" type="rwx"/>
-			<smack request="system::vconf_setting" type="rwx"/>
+			<smack request="tizen::vconf::platform::r" type="rwx"/>
+			<smack request="tizen::vconf::platform::rw" type="rwx"/>
+			<smack request="tizen::vconf::public::r::platform::rw" type="rwx"/>
+			<smack request="tizen::vconf::public::r" type="rwx"/>
+			<smack request="tizen::vconf::public:r" type="rl"/>
+			<smack request="tizen::vconf::network" type="rwx"/>
+			<smack request="tizen::vconf::setting::admin" type="rwx"/>
+			<smack request="telephony_framework::api_private" type="rwx"/>
+			<smack request="telephony_framework::api_ps_public" type="rwx"/>
+			<smack request="telephony_framework::api_ps_private" type="rwx"/>
+			<smack request="telephony_framework::api_ps_profile" type="rwx"/>
+			<smack request="telephony_framework::properties" type="rw"/>
+			<smack request="tizen::vconf::telephony::admin" type="r"/>
+			<smack request="tizen::vconf::display" type="rw"/>
+			<smack request="device::sys_logging" type="rwx"/>
+			<smack request="device::app_logging" type="rwx"/>
+			<smack request="syspopup::db" type="rwx"/>
+			<smack request="tizen::vconf::tethering::admin" type="rw"/>
+			<smack request="tizen::vconf::wifidirect" type="rw"/>
+			<smack request="systemd::no-label" type="rw"/>
+			<smack request="sdbd" type="rw"/>
+			<smack request="net-config::logging" type="wx"/>
+			<smack request="dfms-kernel" type="rw"/>
+			<smack request="_" type="rwx"/>
+			<smack request="wcnd" type="w"/>
 		</request>
 		<permit>
 			<smack permit="dbus" type="rwx"/>
 			<smack permit="system::use_internet" type="rwx"/>
+			<smack permit="telephony_framework" type="rw"/>
 		</permit>
 	</define>
 	<assign>
 		<filesystem path="/etc/resolv.conf" label="_"/>
 		<filesystem path="/usr/lib/systemd/system/net-config.service" label="_"/>
 		<filesystem path="/usr/lib/systemd/system/multi-user.target.wants/net-config.service" label="_"/>
-		<filesystem path="/usr/share/dbus-1/services/net.netconfig.service" label="_"/>
+		<filesystem path="/usr/share/dbus-1/system-services/net.netconfig.service" label="_"/>
 		<filesystem path="/usr/sbin/net-config.service" label="_" exec_label="none"/>
 		<filesystem path="/usr/share/license/net-config" label="_"/>
 		<filesystem path="/opt/etc/dump.d/module.d/network_log_dump.sh" label="_" exec_label="none"/>
+		<filesystem path="/opt/var/lib/net-config/network_dump.sh" label="_" exec_label="none"/>
+		<filesystem path="/opt/usr/data/network" label="net-config"/>
 		<dbus name="net.netconfig" own="net-config" bus="system">
 			<node name="/net/netconfig/*">
 			<interface name="net.netconfig.network">
@@ -88,7 +117,7 @@
 			</interface>
 			<interface name="net.netconfig.wifi">
 				<annotation name="net.netconfig.smack" value="net-config"/>
-				<method name="DeleteConfig">
+				<method name="DeleteEapConfig">
 					<annotation name="net.netconfig.smack" value="connman::profile"/>
 				</method>
 				<method name="RequestSpecificScan">
@@ -97,17 +126,17 @@
 				<method name="RequestWpsScan">
 					<annotation name="net.netconfig.smack" value="connman::set"/>
 				</method>
-				<method name="CreateConfig">
+				<method name="CreateEapConfig">
 					<annotation name="net.netconfig.smack" value="connman::profile"/>
 				</method>
 				<method name="LoadDriver">
 					<annotation name="net.netconfig.smack" value="connman::set"/>
 				</method>
-				<method name="LaunchDirect">
-					<annotation name="net.netconfig.smack" value="wifi-direct"/>
-				</method>
 				<method name="RemoveDriver">
 					<annotation name="net.netconfig.smack" value="connman::set"/>
+				</method>
+				<method name="GetWifiState">
+					<annotation name="net.netconfig.smack" value="connman::get"/>
 				</method>
 				<method name="SetBgscan">
 					<annotation name="net.netconfig.smack" value="connman::set"/>
@@ -117,6 +146,39 @@
 				</method>
 				<method name="PauseBgscan">
 					<annotation name="net.netconfig.smack" value="connman::set"/>
+				</method>
+				<method name="GetPasspoint">
+					<annotation name="net.netconfig.smack" value="connman::get"/>
+				</method>
+				<method name="SetPasspoint">
+					<annotation name="net.netconfig.smack" value="connman::set"/>
+				</method>
+				<method name="LaunchDirect">
+					<annotation name="net.netconfig.smack" value="wifi-direct"/>
+				</method>
+				<method name="GetConfigIds">
+					<annotation name="net.netconfig.smack" value="connman::profile"/>
+				</method>
+				<method name="LoadConfiguration">
+					<annotation name="net.netconfig.smack" value="connman::profile"/>
+				</method>
+				<method name="SaveConfiguration">
+					<annotation name="net.netconfig.smack" value="connman::profile"/>
+				</method>
+				<method name="LoadEapConfiguration">
+					<annotation name="net.netconfig.smack" value="connman::profile"/>
+				</method>
+				<method name="SaveEapConfiguration">
+					<annotation name="net.netconfig.smack" value="connman::profile"/>
+				</method>
+				<method name="RemoveConfiguration">
+					<annotation name="net.netconfig.smack" value="connman::profile"/>
+				</method>
+				<method name="SetConfigField">
+					<annotation name="net.netconfig.smack" value="connman::profile"/>
+				</method>
+				<method name="GetConfigPassphrase">
+					<annotation name="net.netconfig.smack" value="connman::admin"/>
 				</method>
 				<signal name="PowerOnCompleted">
 					<annotation name="net.netconfig.smack" value="connman::get"/>

@@ -48,9 +48,9 @@
 #define NETCONFIG_INTERNET_CHECK_TIMEOUT	3
 
 enum netconfig_internet_check_state {
-	INTERNET_CHECK_STATE_NONE,
-	INTERNET_CHECK_STATE_DNS_CHECK,
-	INTERNET_CHECK_STATE_PACKET_CHECK
+	INTERNET_CHECK_STATE_NONE			= 0,
+	INTERNET_CHECK_STATE_DNS_CHECK		= 1,
+	INTERNET_CHECK_STATE_PACKET_CHECK	= 2
 };
 
 struct internet_params {
@@ -61,7 +61,6 @@ struct internet_params {
 	guint send_watch;
 	gboolean header_done;
 	gboolean request_started;
-	GCancellable *resolv_cancel;
 };
 
 const static char* url_list[] = {
@@ -73,21 +72,22 @@ const static char* url_list[] = {
 	 "www.youtube.com"
  };
 
+#define URL_LIST_NUM		6
+
 static guint timer_id = 0;
 static const char *proxy_addr = NULL;
 static gboolean perform_recheck = TRUE;
 struct internet_params *net_params = NULL;
 static gboolean is_internet_available = FALSE;
-const static int url_list_num = 6;
 static int url_index = 0;
 static char * redirect_url1 = NULL;
 static char * redirect_url2 = NULL;
-static enum netconfig_internet_check_state check_state =
-		INTERNET_CHECK_STATE_NONE;
+static enum netconfig_internet_check_state check_state = INTERNET_CHECK_STATE_NONE;
+
+static GCancellable *cancellable;
 
 static void __netconfig_connect_sockets(void);
-static void __internet_check_state(
-		enum netconfig_internet_check_state state);
+static void __internet_check_state(enum netconfig_internet_check_state state);
 
 gboolean netconfig_get_internet_status()
 {
@@ -143,8 +143,7 @@ static void __netconfig_update_internet_status(unsigned char *reply)
 static gboolean __netconfig_data_activity_timeout(gpointer data)
 {
 	DBG("Timer timed-out");
-	enum netconfig_internet_check_state prev_state =
-					(enum netconfig_internet_check_state)data;
+	enum netconfig_internet_check_state prev_state = (enum netconfig_internet_check_state)GPOINTER_TO_INT(data);
 	INFO("Prev_state: state=%d (1:dns check / 2:packet check)",prev_state);
 
 	if (net_params == NULL)
@@ -157,7 +156,6 @@ static gboolean __netconfig_data_activity_timeout(gpointer data)
 			netconfig_check_internet_accessibility();
 		} else /* (state == NETCONFIG_DATA_ACTIVITY_STATE_PACKET_CHECK) */
 			__netconfig_connect_sockets();
-		return FALSE;
 	} else {
 		perform_recheck = TRUE;
 		__internet_check_state(INTERNET_CHECK_STATE_NONE);
@@ -172,8 +170,7 @@ static void __netconfig_internet_check_timer_stop(void)
 		netconfig_stop_timer(&timer_id);
 }
 
-static void __netconfig_internet_check_timer_start(
-		enum netconfig_internet_check_state state)
+static void __netconfig_internet_check_timer_start(enum netconfig_internet_check_state state)
 {
 	static guint timeout = 0;
 	if (timer_id != 0) {
@@ -190,29 +187,32 @@ static void __netconfig_internet_check_timer_start(
 
 	netconfig_start_timer_seconds(timeout,
 			__netconfig_data_activity_timeout,
-			(void *)state,
+			GINT_TO_POINTER(state),
 			&timer_id);
 }
 
-static void __internet_check_state(
-		enum netconfig_internet_check_state state)
+static void __internet_check_state(enum netconfig_internet_check_state state)
 {
-	if (check_state == state)
+	enum netconfig_internet_check_state prev_state = check_state;
+
+	if (prev_state == state)
 		return;
 
-	INFO("state change (%d) -> (%d)", check_state, state);
+	ERR("state change (%d) -> (%d)", prev_state, state);
+	check_state = state;
+
 	switch (state) {
 	case INTERNET_CHECK_STATE_DNS_CHECK:
 		__netconfig_internet_check_timer_start(state);
 		break;
 	case INTERNET_CHECK_STATE_PACKET_CHECK:
-		if (check_state == INTERNET_CHECK_STATE_DNS_CHECK)
+		if (prev_state == INTERNET_CHECK_STATE_DNS_CHECK)
 			__netconfig_internet_check_timer_stop();
 
 		__netconfig_internet_check_timer_start(state);
 		break;
 	case INTERNET_CHECK_STATE_NONE:
-		switch (check_state) {
+		switch (prev_state) {
 		case INTERNET_CHECK_STATE_DNS_CHECK:
 		case INTERNET_CHECK_STATE_PACKET_CHECK:
 			__netconfig_internet_check_timer_stop();
@@ -223,45 +223,6 @@ static void __internet_check_state(
 		}
 		break;
 	}
-	check_state = state;
-}
-
-void netconfig_stop_internet_check(void)
-{
-	if (net_params == NULL)
-		return;
-
-	net_params->header_done = FALSE;
-	net_params->request_started = FALSE;
-
-	if (net_params->resolv_cancel != NULL) {
-		g_cancellable_cancel(net_params->resolv_cancel);
-		g_object_unref(net_params->resolv_cancel);
-		net_params->resolv_cancel = NULL;
-	}
-
-	if (net_params->transport_watch > 0) {
-		g_source_remove(net_params->transport_watch);
-		net_params->transport_watch = 0;
-	}
-
-	if (net_params->send_watch > 0) {
-		g_source_remove(net_params->send_watch);
-		net_params->send_watch = 0;
-	}
-
-	if (net_params->fd > 0) {
-		close(net_params->fd);
-		net_params->fd = -1;
-	}
-
-	if (net_params->addr != NULL) {
-		g_free(net_params->addr);
-		net_params->addr = NULL;
-	}
-
-	g_free(net_params);
-	net_params = NULL;
 }
 
 static gboolean __received_data_event(GIOChannel *channel,
@@ -418,6 +379,7 @@ static void __netconfig_obtain_host_ip_addr_cb(GObject *src,
 	GList *list, *cur;
 	GInetAddress *addr;
 	gchar *str_addr;
+	GError *error = NULL;
 
 	if (net_params == NULL)
 		return;
@@ -425,7 +387,14 @@ static void __netconfig_obtain_host_ip_addr_cb(GObject *src,
 	if (check_state == INTERNET_CHECK_STATE_NONE)
 		return;
 
-	list = g_resolver_lookup_by_name_finish((GResolver *)src, res, NULL);
+	list = g_resolver_lookup_by_name_finish((GResolver *)src, res, &error);
+	if (error != NULL) {
+		if (error->code == G_IO_ERROR_CANCELLED) {
+			ERR("G_IO_ERROR_CANCELLED is called[%s]", error->message);
+		}
+		g_error_free(error);
+	}
+
 	if (!list) {
 		INFO("no data");
 		goto cleanup;
@@ -478,7 +447,7 @@ gboolean __netconfig_obtain_host_ip_addr(void)
 	proxy_addr = netconfig_get_default_proxy();
 	DBG("Proxy(%s)", proxy_addr);
 
-	if (++url_index >= url_list_num)
+	if (++url_index >= URL_LIST_NUM)
 		url_index = 0;
 
 	DBG("addr (%s)", url_list[url_index]);
@@ -486,12 +455,11 @@ gboolean __netconfig_obtain_host_ip_addr(void)
 	/* FIXME: domain proxy should be resolved */
 	if (proxy_addr == NULL) {
 		GResolver *r = NULL;
-		net_params->resolv_cancel = g_cancellable_new();
 		r = g_resolver_get_default();
 
 		g_resolver_lookup_by_name_async(r,
 				url_list[url_index],
-				net_params->resolv_cancel,
+				cancellable,
 				__netconfig_obtain_host_ip_addr_cb,
 				NULL);
 		__internet_check_state(INTERNET_CHECK_STATE_DNS_CHECK);
@@ -535,7 +503,7 @@ cleanup:
 
 void netconfig_check_internet_accessibility(void)
 {
-	DBG("::Entry");
+	ERR("::Entry");
 
 	if (net_params == NULL) {
 		net_params = g_try_malloc0(sizeof(struct internet_params));
@@ -544,8 +512,7 @@ void netconfig_check_internet_accessibility(void)
 		net_params->fd = -1;
 	}
 
-	if ((check_state != INTERNET_CHECK_STATE_NONE) ||
-			(net_params->request_started == TRUE)) {
+	if ((check_state != INTERNET_CHECK_STATE_NONE) || (net_params->request_started == TRUE)) {
 		DBG("Older query in progress");
 		return;
 	}
@@ -556,4 +523,62 @@ void netconfig_check_internet_accessibility(void)
 	if (__netconfig_obtain_host_ip_addr() == TRUE) {
 		__netconfig_connect_sockets();
 	}
+}
+
+void netconfig_stop_internet_check(void)
+{
+	if (net_params == NULL)
+		return;
+
+	net_params->header_done = FALSE;
+	net_params->request_started = FALSE;
+
+	if (g_cancellable_is_cancelled(cancellable) == FALSE) {
+		g_cancellable_cancel(cancellable);
+		ERR("g_cancellable_cancel is called and return stop_internet_check");
+		return;
+	}
+
+	if (net_params->transport_watch > 0) {
+		g_source_remove(net_params->transport_watch);
+		net_params->transport_watch = 0;
+	}
+
+	if (net_params->send_watch > 0) {
+		g_source_remove(net_params->send_watch);
+		net_params->send_watch = 0;
+	}
+
+	if (net_params->fd > 0) {
+		close(net_params->fd);
+		net_params->fd = -1;
+	}
+
+	if (net_params->addr != NULL) {
+		g_free(net_params->addr);
+		net_params->addr = NULL;
+	}
+
+	g_free(net_params);
+	net_params = NULL;
+
+	if (redirect_url1) {
+		g_free(redirect_url1);
+		redirect_url1 = NULL;
+	}
+
+	if (redirect_url2) {
+		g_free(redirect_url2);
+		redirect_url2 = NULL;
+	}
+}
+
+void netconfig_internet_accessibility_init(void)
+{
+	cancellable = g_cancellable_new();
+}
+
+void netconfig_internet_accessibility_deinit(void)
+{
+	g_object_unref(cancellable);
 }

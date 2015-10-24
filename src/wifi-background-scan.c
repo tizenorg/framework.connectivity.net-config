@@ -87,8 +87,8 @@ static guint __netconfig_wifi_bgscan_get_mode(void)
 
 static gboolean __netconfig_wifi_bgscan_request_connman_scan(int retries)
 {
-	gboolean reply;
-	guint state = netconfig_wifi_state_get_service_state();
+	gboolean reply = FALSE;
+	guint state = wifi_state_get_service_state();
 
 	if (state == NETCONFIG_WIFI_CONNECTED)
 		if (__netconfig_wifi_bgscan_get_mode() == WIFI_BGSCAN_MODE_EXPONENTIAL)
@@ -221,14 +221,14 @@ gboolean netconfig_wifi_is_bgscan_paused(void)
 
 void netconfig_wifi_bgscan_start(gboolean immediate_scan)
 {
-	enum netconfig_wifi_tech_state wifi_tech_state;
+	wifi_tech_state_e wifi_tech_state;
 	struct bgscan_timer_data *timer_data =
 			__netconfig_wifi_bgscan_get_bgscan_data();
 
 	if (timer_data == NULL)
 		return;
 
-	wifi_tech_state = netconfig_wifi_state_get_technology_state();
+	wifi_tech_state = wifi_state_get_technology_state();
 	if (wifi_tech_state < NETCONFIG_WIFI_TECH_POWERED)
 		return;
 
@@ -271,15 +271,16 @@ void netconfig_wifi_set_scanning(gboolean scanning)
 		netconfig_wifi_scanning = scanning;
 }
 
-gboolean netconfig_iface_wifi_set_bgscan(
-		NetconfigWifi *wifi, guint scan_mode, GError **error)
+gboolean handle_set_bgscan(Wifi *wifi, GDBusMethodInvocation *context, guint scan_mode)
 {
 	gint old_mode = 0;
 	int pm_state = VCONFKEY_PM_STATE_NORMAL;
 
 	old_mode = __netconfig_wifi_bgscan_get_mode();
-	if (old_mode == scan_mode)
+	if (old_mode == scan_mode){
+		wifi_complete_set_bgscan(wifi, context);
 		return TRUE;
+	}
 
 	__netconfig_wifi_bgscan_set_mode(scan_mode);
 
@@ -292,22 +293,23 @@ gboolean netconfig_iface_wifi_set_bgscan(
 	else
 		netconfig_wifi_bgscan_start(TRUE);
 
+	wifi_complete_set_bgscan(wifi, context);
 	return TRUE;
 }
 
-gboolean netconfig_iface_wifi_resume_bgscan(
-		NetconfigWifi *wifi, GError **error)
+gboolean handle_resume_bgscan(Wifi *wifi, GDBusMethodInvocation *context)
 {
 	netconfig_wifi_set_bgscan_pause(FALSE);
 
+	wifi_complete_resume_bgscan (wifi, context);
 	return TRUE;
 }
 
-gboolean netconfig_iface_wifi_pause_bgscan(
-		NetconfigWifi *wifi, GError **error)
+gboolean handle_pause_bgscan(Wifi *wifi, GDBusMethodInvocation *context)
 {
 	netconfig_wifi_set_bgscan_pause(TRUE);
 
+	wifi_complete_pause_bgscan(wifi, context);
 	return TRUE;
 }
 

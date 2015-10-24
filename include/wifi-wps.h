@@ -31,8 +31,8 @@ gboolean netconfig_wifi_is_wps_enabled(void);
 void netconfig_wifi_wps_signal_scandone(void);
 void netconfig_wifi_wps_signal_scanaborted(void);
 
-gboolean netconfig_iface_wifi_request_wps_scan(
-		NetconfigWifi *wifi, GError **error);
+gboolean handle_request_wps_scan(Wifi *wifi, GDBusMethodInvocation *context);
+gboolean netconfig_iface_wifi_request_wps_cancel(Wifi *wifi, GDBusMethodInvocation **context);
 
 #ifdef __cplusplus
 }

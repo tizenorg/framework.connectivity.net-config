@@ -26,15 +26,12 @@ extern "C" {
 
 #include "wifi.h"
 
-gboolean netconfig_wifi_get_ssid_scan_state(void);
+gboolean	wifi_ssid_scan(const char *ssid);
+gboolean	wifi_ssid_scan_get_state(void);
+void		wifi_ssid_scan_emit_scan_completed(void);
+void		wifi_ssid_scan_add_bss(GVariant *message);
 
-void netconfig_wifi_notify_ssid_scan_done(void);
-void netconfig_wifi_bss_added(DBusMessage *message);
-
-gboolean netconfig_wifi_ssid_scan(const char *ssid);
-
-gboolean netconfig_iface_wifi_request_specific_scan(NetconfigWifi *wifi,
-		gchar *ssid, GError **error);
+gboolean	handle_request_specific_scan(Wifi *wifi, GDBusMethodInvocation *context, const gchar *ssid);
 
 #ifdef __cplusplus
 }

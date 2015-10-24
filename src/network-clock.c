@@ -40,6 +40,7 @@ static void __netconfig_clock_clear_timeserver(void)
 	g_key_file_remove_key(keyfile, "global", "Timeservers", NULL);
 
 	netconfig_keyfile_save(keyfile, CONNMAN_GLOBAL_SETTING);
+	g_key_file_free(keyfile);
 }
 
 static gboolean __netconfig_clock_clear_timeserver_timer(gpointer data)
@@ -53,35 +54,43 @@ static gboolean __netconfig_clock_clear_timeserver_timer(gpointer data)
 
 static void __netconfig_clock_set_timeserver(const char *server)
 {
-	DBusMessage* reply = NULL;
-	char param0[] = "string:Timeservers";
-	char *param1 = NULL;
-	char *param_array[] = { NULL, NULL, NULL };
+	GVariant* reply = NULL;
+	const char param0[] = "Timeservers";
+	GVariant *params = NULL;
+	GVariantBuilder *builder;
 
-	param1 = g_strdup_printf("variant:array:string:%s", server);
+	builder = g_variant_builder_new(G_VARIANT_TYPE ("as"));
+	g_variant_builder_add(builder, "s", server);
 
-	param_array[0] = param0;
-	param_array[1] = param1;
+	params = g_variant_new("(sv)",param0, g_variant_builder_end(builder));
+	g_variant_builder_unref(builder);
 
 	reply = netconfig_invoke_dbus_method(CONNMAN_SERVICE,
 			CONNMAN_MANAGER_PATH, CONNMAN_CLOCK_INTERFACE,
-			"SetProperty", param_array);
-	if (reply == NULL) {
+			"SetProperty", params);
+
+	if (reply == NULL)
 		ERR("Failed to configure NTP server");
+	else
+		g_variant_unref(reply);
 
-		g_free(param1);
-		return;
-	}
+	return;
+}
 
-	g_free(param1);
-	dbus_message_unref(reply);
+static void __netconfig_set_timeserver(void)
+{
+	guint timeserver_clear_timer = 0;
+
+	__netconfig_clock_set_timeserver((const char *)NTP_SERVER);
+
+	netconfig_start_timer_seconds(5, __netconfig_clock_clear_timeserver_timer,
+			NULL, &timeserver_clear_timer);
 }
 
 static void __netconfig_clock(
-		enum netconfig_wifi_service_state state, void *user_data)
+		wifi_service_state_e state, void *user_data)
 {
 	gboolean automatic_time_update = 0;
-	guint timeserver_clear_timer = 0;
 
 	if (state != NETCONFIG_WIFI_CONNECTED)
 		return;
@@ -95,23 +104,50 @@ static void __netconfig_clock(
 		return;
 	}
 
-	__netconfig_clock_set_timeserver((const char *)NTP_SERVER);
-
-	netconfig_start_timer_seconds(5, __netconfig_clock_clear_timeserver_timer,
-			NULL, &timeserver_clear_timer);
+	__netconfig_set_timeserver();
 }
 
-static struct netconfig_wifi_state_notifier netconfig_clock_notifier = {
-		.netconfig_wifi_state_changed = __netconfig_clock,
+static wifi_state_notifier netconfig_clock_notifier = {
+		.wifi_state_changed = __netconfig_clock,
 		.user_data = NULL,
 };
 
+static void __automatic_time_update_changed_cb(keynode_t *node, void *user_data)
+{
+	gboolean automatic_time_update = FALSE;
+	wifi_service_state_e wifi_state = NETCONFIG_WIFI_UNKNOWN;
+
+	if (node != NULL) {
+		automatic_time_update = vconf_keynode_get_bool(node);
+	} else {
+		vconf_get_bool(VCONFKEY_SETAPPL_STATE_AUTOMATIC_TIME_UPDATE_BOOL, &automatic_time_update);
+	}
+
+	if (automatic_time_update == FALSE) {
+		INFO("Automatic time update is changed to 'FALSE'");
+		return;
+	}
+
+	 wifi_state = wifi_state_get_service_state();
+
+	 if (wifi_state != NETCONFIG_WIFI_CONNECTED) {
+		INFO("WiFi state is not NETCONFIG_WIFI_CONNECTED");
+		return;
+	 }
+
+	__netconfig_set_timeserver();
+}
+
 void netconfig_clock_init(void)
 {
-	netconfig_wifi_state_notifier_register(&netconfig_clock_notifier);
+	INFO("netconfig_clock_init is called");
+	vconf_notify_key_changed(VCONFKEY_SETAPPL_STATE_AUTOMATIC_TIME_UPDATE_BOOL,
+			__automatic_time_update_changed_cb, NULL);
+
+	wifi_state_notifier_register(&netconfig_clock_notifier);
 }
 
 void netconfig_clock_deinit(void)
 {
-	netconfig_wifi_state_notifier_unregister(&netconfig_clock_notifier);
+	wifi_state_notifier_unregister(&netconfig_clock_notifier);
 }

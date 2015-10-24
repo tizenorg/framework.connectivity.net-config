@@ -12,6 +12,9 @@
 		</method>
 		<method name="RemoveP2pDriver">
 		</method>
+		<method name="GetWifiState">
+			<arg type="i" name="state" direction="out"/>
+		</method>
 		<method name="SetBgscan">
 			<arg type="u" name="ScanMode" direction="in"/>
 		</method>
@@ -30,58 +33,101 @@
 		<method name="SetPasspoint">
 			<arg type="i" name="enable" direction="in"/>
 		</method>
-		<method name="CreateConfig">
-			<annotation name="org.freedesktop.DBus.GLib.Async" value="true"/>
-				<arg type="o" name="Service" direction="in"/>
-				<arg type="a{ss}" name="Fields" direction="in"/>
+		<method name="GetConfigIds">
+			<arg type="as" name="config_ids" direction="out"/>
 		</method>
-		<method name="DeleteConfig">
-			<annotation name="org.freedesktop.DBus.GLib.Async" value="true"/>
-				<arg type="s" name="Profile" direction="in"/>
+		<method name="SaveConfiguration">
+			<arg type="s" name="config_id" direction="in"/>
+			<arg type="a{sv}" name="Configuration" direction="in"/>
+		</method>
+		<method name="SaveEapConfiguration">
+			<arg type="s" name="config_id" direction="in"/>
+			<arg type="a{sv}" name="Configuration" direction="in"/>
+		</method>
+		<method name="RemoveConfiguration">
+			<arg type="s" name="config_id" direction="in"/>
+		</method>
+		<method name="LoadConfiguration">
+			<arg type="s" name="config_id" direction="in"/>
+			<arg type="a{sv}" name="Configuration" direction="out"/>
+		</method>
+		<method name="LoadEapConfiguration">
+			<arg type="s" name="config_id" direction="in"/>
+			<arg type="a{sv}" name="Configuration" direction="out"/>
+		</method>
+		<method name="SetConfigField">
+			<arg type="s" name="config_id" direction="in"/>
+			<arg type="s" name="key" direction="in"/>
+			<arg type="s" name="value" direction="in"/>
+		</method>
+		<method name="GetConfigPassphrase">
+			<arg type="s" name="config_id" direction="in"/>
+			<arg type="s" name="passphrase" direction="out"/>
+		</method>
+		<method name="CreateEapConfig">
+			<arg type="o" name="Service" direction="in"/>
+			<arg type="a{ss}" name="Fields" direction="in"/>
+		</method>
+		<method name="DeleteEapConfig">
+			<arg type="s" name="Profile" direction="in"/>
 		</method>
 		<method name="GetSimImsi">
-			<annotation name="org.freedesktop.DBus.GLib.Async" value="true"/>
-				<arg type="s" name="imsi_data" direction="out"/>
+			<arg type="s" name="imsi_data" direction="out"/>
 		</method>
 		<method name="ReqSimAuth">
-			<arg type="ay" name="rand_data" direction="in"/>
+			<arg type="ay" name="rand_data" direction="in">
+				<annotation name="org.gtk.GDBus.C.ForceGVariant" value="true"/>
+			</arg>
 			<arg type="b" name="result" direction="out"/>
 		</method>
 		<method name="ReqAkaAuth">
-			<arg type="ay" name="rand_data" direction="in"/>
-			<arg type="ay" name="autn_data" direction="in"/>
+			<arg type="ay" name="rand_data" direction="in">
+				<annotation name="org.gtk.GDBus.C.ForceGVariant" value="true"/>
+			</arg>
+			<arg type="ay" name="autn_data" direction="in">
+				<annotation name="org.gtk.GDBus.C.ForceGVariant" value="true"/>
+			</arg>
 			<arg type="b" name="result" direction="out"/>
 		</method>
 		<method name="GetSimAuth">
-			<annotation name="org.freedesktop.DBus.GLib.Async" value="true"/>
-				<arg type="ay" name="auth_data" direction="out"/>
+			<arg type="ay" name="auth_data" direction="out"/>
 		</method>
 		<method name="GetAkaAuth">
-			<annotation name="org.freedesktop.DBus.GLib.Async" value="true"/>
-				<arg type="ay" name="auth_data" direction="out"/>
+			<arg type="ay" name="auth_data" direction="out"/>
 		</method>
+		<method name="CheckBlackList">
+			<arg type="s" name="name" direction="in"/>
+			<arg type="s" name="security_type" direction="in"/>
+			<arg type="s" name="eap" direction="in"/>
+			<arg type="b" name="allowed" direction="out"/>
+		</method>
+		<signal name="PowerOnCompleted"></signal>
+		<signal name="PowerOffCompleted"></signal>
+		<signal name="PowerOperationFailed"></signal>
+		<signal name="SpecificScanCompleted">
+			<arg type="a{sv}" name="Fields" direction="out"/>
+		</signal>
+		<signal name="WpsScanCompleted">
+			<arg type="a{sv}" name="Fields" direction="out"/>
+		</signal>
 	</interface>
 	<interface name="net.connman.Agent">
 		<method name="SetField">
-			<annotation name="org.freedesktop.DBus.GLib.Async" value="true"/>
-				<arg type="o" name="Service" direction="in"/>
-				<arg type="a{sv}" name="Fields" direction="in"/>
+			<arg type="o" name="Service" direction="in"/>
+			<arg type="a{sv}" name="Fields" direction="in"/>
 		</method>
 		<method name="RequestInput">
-			<annotation name="org.freedesktop.DBus.GLib.Async" value="true"/>
-				<arg type="o" name="Service" direction="in"/>
-				<arg type="a{sv}" name="Fields" direction="in"/>
-				<arg type="a{sv}" name="OutFields" direction="out"/>
+			<arg type="o" name="Service" direction="in"/>
+			<arg type="a{sv}" name="Fields" direction="in"/>
+			<arg type="a{sv}" name="OutFields" direction="out"/>
 		</method>
 		<method name="ReportError">
-			<annotation name="org.freedesktop.DBus.GLib.Async" value="true"/>
-				<arg type="o" name="Service" direction="in"/>
-				<arg type="s" name="Error" direction="in"/>
+			<arg type="o" name="Service" direction="in"/>
+			<arg type="s" name="Error" direction="in"/>
 		</method>
 		<method name="RequestBrowser">
-			<annotation name="org.freedesktop.DBus.GLib.Async" value="true"/>
-				<arg type="o" name="Service" direction="in"/>
-				<arg type="s" name="url" direction="in"/>
+			<arg type="o" name="Service" direction="in"/>
+			<arg type="s" name="url" direction="in"/>
 		</method>
 	</interface>
 	<interface name="net.netconfig.wifi.Firmware">
@@ -90,6 +136,10 @@
 		</method>
 		<method name="Stop">
 			<arg type="s" name="Device" direction="in"/>
+		</method>
+	</interface>
+	<interface name="net.netconfig.tv_profile">
+		<method name="RequestWpsCancel">
 		</method>
 	</interface>
 </node>

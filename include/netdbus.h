@@ -21,12 +21,16 @@
 #define __NETCONFIG_NETDBUS_H__
 
 #include <glib.h>
-#include <dbus/dbus.h>
-#include <dbus/dbus-glib.h>
+#include <gio/gio.h>
+#include <glib-object.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+#define DBUS_REPLY_TIMEOUT		(120 * 1000)
+#define NETCONFIG_DBUS_REPLY_TIMEOUT	(10 * 1000)
+#define DBUS_INTERFACE_PROPERTIES	"org.freedesktop.DBus.Properties"
 
 #define NETCONFIG_SERVICE				"net.netconfig"
 
@@ -52,7 +56,11 @@ extern "C" {
 #define CONNMAN_BLUETOOTH_TECHNOLOGY_PREFIX	CONNMAN_PATH "/technology/bluetooth"
 
 #define NETCONFIG_WIFI_INTERFACE		"net.netconfig.wifi"
-#define NETCONFIG_WIFI_PATH				"/net/netconfig/wifi"
+#define NETCONFIG_WIFI_PATH			"/net/netconfig/wifi"
+#define NETCONFIG_NETWORK_STATE_PATH		"/net/netconfig/network"
+#define NETCONFIG_NETWORK_STATISTICS_PATH	"/net/netconfig/network_statistics"
+#define NETCONFIG_NETWORK_PATH			"/net/netconfig/network"
+#define NETCONFIG_NETWORK_INTERFACE		"net.netconfig.network"
 
 #define DBUS_PATH_MAX_BUFLEN		512
 #define DBUS_STATE_MAX_BUFLEN		64
@@ -62,25 +70,33 @@ typedef enum {
 	NETCONFIG_DBUS_RESULT_DEFAULT_TECHNOLOGY,
 } netconfig_dbus_result_type;
 
+typedef void (*got_name_cb)(void);
+
+GDBusObjectManagerServer	*netdbus_get_wifi_manager(void);
+GDBusObjectManagerServer	*netdbus_get_state_manager(void);
+GDBusObjectManagerServer	*netdbus_get_statistics_manager(void);
+
+GDBusConnection				*netdbus_get_connection(void);
+GCancellable				*netdbus_get_cancellable(void);
+void netconfig_gdbus_pending_call_ref(void);
+void netconfig_gdbus_pending_call_unref(void);
+int netconfig_create_gdbus_call(GDBusConnection *conn);
+
 gboolean netconfig_is_cellular_internet_profile(const char *profile);
 gboolean netconfig_is_cellular_profile(const char *profile);
 gboolean netconfig_is_wifi_profile(const char *profile);
 gboolean netconfig_is_ethernet_profile(const char *profile);
 gboolean netconfig_is_bluetooth_profile(const char *profile);
 
-gboolean netconfig_invoke_dbus_method_nonblock(
-		const char *dest, const char *path,
-		const char *interface_name, const char *method, char *param_array[],
-		DBusPendingCallNotifyFunction notify_func);
-DBusMessage *netconfig_invoke_dbus_method(const char *dest, const char *path,
-		const char *interface_name, const char *method, char *param_array[]);
+gboolean netconfig_invoke_dbus_method_nonblock(const char *dest, const char *path,
+		const char *interface_name, const char *method, GVariant *params,
+		GAsyncReadyCallback notify_func);
+GVariant *netconfig_invoke_dbus_method(const char *dest, const char *path,
+		const char *interface_name, const char *method,
+		GVariant *params);
 
-gboolean netconfig_dbus_get_basic_params_string(DBusMessage *message,
-		char **key, int type, void *value);
-gboolean netconfig_dbus_get_basic_params_array(DBusMessage *message,
-		const char *key, void **value);
-
-DBusGConnection *netconfig_setup_dbus(void);
+int		setup_gdbus(got_name_cb cb);
+void	cleanup_gdbus(void);
 
 #ifdef __cplusplus
 }

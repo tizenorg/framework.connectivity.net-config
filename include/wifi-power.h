@@ -24,28 +24,29 @@
 extern "C" {
 #endif
 
-#include <glib.h>
+#include "wifi.h"
 
-void netconfig_wifi_power_initialize(void);
+void		wifi_power_initialize(void);
+void		wifi_power_deinitialize(void);
 
-int netconfig_wifi_on(void);
-int netconfig_wifi_off(void);
-void netconfig_wifi_fetch_airplane_mode(void);
-int netconfig_wifi_driver_and_supplicant(gboolean enable);
+int			wifi_power_on(void);
+int			wifi_power_off(void);
+#if defined TIZEN_WEARABLE
+int			wifi_power_on_wearable(gboolean device_picker_test);
+#endif
 
-void netconfig_wifi_disable_technology_state_by_only_connman_signal(void);
+int			wifi_power_driver_and_supplicant(gboolean enable);
+void		wifi_power_disable_technology_state_by_only_connman_signal(void);
+void		wifi_power_recover_firmware(void);
 
-void netconfig_wifi_recover_firmware(void);
+gboolean	handle_load_driver(Wifi *wifi, GDBusMethodInvocation *context, gboolean device_picker_test);
+gboolean	handle_remove_driver(Wifi *wifi, GDBusMethodInvocation *context);
+gboolean	handle_load_p2p_driver(Wifi *wifi, GDBusMethodInvocation *context);
+gboolean	handle_remove_p2p_driver(Wifi *wifi, GDBusMethodInvocation *context);
 
-gboolean netconfig_iface_wifi_load_driver(
-		NetconfigWifi *wifi, gboolean device_picker_test, GError **error);
-gboolean netconfig_iface_wifi_remove_driver(
-		NetconfigWifi *wifi, GError **error);
-
-gboolean netconfig_iface_wifi_load_p2p_driver(
-		NetconfigWifi *wifi, GError **error);
-gboolean netconfig_iface_wifi_remove_p2p_driver(
-		NetconfigWifi *wifi, GError **error);
+#if defined TIZEN_TV
+       void __netconfig_set_ether_macaddr();
+#endif
 
 #ifdef __cplusplus
 }

@@ -24,28 +24,24 @@
 extern "C" {
 #endif
 
-enum netconfig_cellular_service_state {
+typedef enum {
 	NETCONFIG_CELLULAR_UNKNOWN	= 0x00,
 	NETCONFIG_CELLULAR_IDLE		= 0x01,
-	NETCONFIG_CELLULAR_ONLINE	= 0x02,
-};
+	NETCONFIG_CELLULAR_CONNECTING	= 0x02,
+	NETCONFIG_CELLULAR_ONLINE		= 0x03,
+} cellular_service_state_e;
 
-struct netconfig_cellular_state_notifier {
-	void (*netconfig_cellular_state_changed)
-		(enum netconfig_cellular_service_state, void *user_data);
+typedef struct {
+	void (*cellular_state_changed)(cellular_service_state_e, void *user_data);
 	void *user_data;
-};
+} cellular_state_notifier;
 
-void netconfig_cellular_state_set_service_state(
-		enum netconfig_cellular_service_state new_state);
-enum netconfig_cellular_service_state
-		netconfig_cellular_state_get_service_state(void);
+void							cellular_state_set_service_state(cellular_service_state_e new_state);
+cellular_service_state_e	cellular_state_get_service_state(void);
 
-void netconfig_cellular_state_notifier_cleanup(void);
-void netconfig_cellular_state_notifier_register(
-		struct netconfig_cellular_state_notifier *notifier);
-void netconfig_cellular_state_notifier_unregister(
-		struct netconfig_cellular_state_notifier *notifier);
+void cellular_state_notifier_register(cellular_state_notifier *notifier);
+void cellular_state_notifier_unregister(cellular_state_notifier *notifier);
+void cellular_state_notifier_cleanup(void);
 
 #ifdef __cplusplus
 }

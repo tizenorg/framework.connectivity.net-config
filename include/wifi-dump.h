@@ -17,20 +17,26 @@
  *
  */
 
-#ifndef __MDM_PRIVATE_H__
-#define __MDM_PRIVATE_H__
+#ifndef __NETCONFIG_WIFI_DUMP_H__
+#define __NETCONFIG_WIFI_DUMP_H__
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-#include <glib.h>
 
-static inline gboolean netconfig_is_wifi_allowed(void) { return TRUE; }
-static inline void netconfig_check_allowed_ap(const char *path) { return; }
+#define DUMP_SERVICE_BUS_NAME           "org.tizen.system.dumpservice"
+#define DUMP_SERVICE_OBJECT_PATH        "/Org/Tizen/System/DumpService"
+#define DUMP_SERVICE_INTERFACE          "org.tizen.system.dumpservice"
+
+#define DUMP_SIGNAL                    "Dump"
+#define DUMP_START_SIGNAL              "Start"
+#define DUMP_FINISH_SIGNAL             "Finish"
+
+int netconfig_dump_log(const char *path);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* __MDM_PRIVATE_H__ */
+#endif

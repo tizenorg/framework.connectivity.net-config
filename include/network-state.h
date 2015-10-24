@@ -24,45 +24,22 @@
 extern "C" {
 #endif
 
-#include <glib-object.h>
-#include <dbus/dbus-glib.h>
+void netconfig_network_notify_ethernet_cable_state(const char *key);
 
-G_BEGIN_DECLS
+const char		*netconfig_get_default_profile(void);
+const char		*netconfig_get_default_ifname(void);
+const char		*netconfig_get_default_ipaddress(void);
+const char		*netconfig_get_default_ipaddress6(void);
+const char		*netconfig_get_default_proxy(void);
+unsigned int	netconfig_get_default_frequency(void);
+const char		*netconfig_wifi_get_connected_essid(const char *default_profile);
 
-typedef struct NetconfigNetworkState	NetconfigNetworkState;
-typedef struct NetconfigNetworkStateClass	NetconfigNetworkStateClass;
+void			netconfig_update_default(void);
+void			netconfig_update_default_profile(const char *profile);
+char			*netconfig_get_ifname(const char *profile);
 
-#define NETCONFIG_TYPE_NETWORK_STATE	( netconfig_network_state_get_type() )
-#define NETCONFIG_NETWORK_STATE(obj) \
-	( G_TYPE_CHECK_INSTANCE_CAST((obj), NETCONFIG_TYPE_NETWORK_STATE, \
-			NetconfigNetworkState) )
-#define NETCONFIG_IS_NETWORK_STATE(obj) \
-	( G_TYPE_CHECK_INSTANCE_TYPE((obj), NETCONFIG_TYPE_NETWORK_STATE) )
-
-#define NETCONFIG_NETWORK_STATE_CLASS(klass) \
-	( G_TYPE_CHECK_CLASS_CAST((klass), NETCONFIG_TYPE_NETWORK_STATE, \
-			NetconfigNetworkStateClass) )
-#define NETCONFIG_IS_NETWORK_STATE_CLASS(klass) \
-	( G_TYPE_CHECK_CLASS_TYPE((klass), NETCONFIG_TYPE_NETWORK_STATE) )
-#define NETCONFIG_NETWORK_STATE_GET_CLASS(obj) \
-	( G_TYPE_INSTANCE_GET_CLASS((obj), NETCONFIG_TYPE_NETWORK_STATE, \
-			NetconfigNetworkStateClass) )
-
-GType netconfig_network_state_get_type(void);
-
-gpointer netconfig_network_state_create_and_init(DBusGConnection *connection);
-
-G_END_DECLS
-
-const char *netconfig_get_default_profile(void);
-const char *netconfig_get_default_ifname(void);
-const char *netconfig_get_default_ipaddress(void);
-const char *netconfig_get_default_proxy(void);
-const char *netconfig_wifi_get_connected_essid(const char *default_profile);
-
-void netconfig_update_default(void);
-void netconfig_update_default_profile(const char *profile);
-char *netconfig_network_get_ifname(const char *profile);
+void state_object_create_and_init(void);
+void state_object_deinit(void);
 
 #ifdef __cplusplus
 }

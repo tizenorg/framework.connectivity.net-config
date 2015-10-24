@@ -115,17 +115,16 @@ static void __netconfig_emulator_config_emul_env(void)
 	__netconfig_emulator_set_network_state();
 }
 
-gboolean netconfig_emulator_is_emulated(void)
+gboolean emulator_is_emulated(void)
 {
 	return netconfig_is_emulated;
 }
 
-void netconfig_emulator_test_and_start(void)
+void emulator_test_and_start(void)
 {
 	netconfig_is_emulated = __netconfig_emulator_test_emulation_env();
 
-	DBG("Emulation environment tested: %s", netconfig_is_emulated ?
-			"It's emulated" : "Not emulated");
+	DBG("Emulation environment tested: %s", netconfig_is_emulated ? "It's emulated" : "Not emulated");
 
 	if (netconfig_is_emulated == TRUE)
 		__netconfig_emulator_config_emul_env();

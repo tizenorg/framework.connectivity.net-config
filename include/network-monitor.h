@@ -1,7 +1,7 @@
 /*
  * Network Configuration Module
  *
- * Copyright (c) 2000 - 2012 Samsung Electronics Co., Ltd. All rights reserved.
+ * Copyright (c) 2014 Samsung Electronics Co., Ltd. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,24 +17,31 @@
  *
  */
 
-#ifndef __NETCONFIG_WIFI_POWERSAVE_H__
-#define __NETCONFIG_WIFI_POWERSAVE_H__
+#ifndef __NETCONFIG_NETWORK_MONITOR_H__
+#define __NETCONFIG_NETWORK_MONITOR_H__
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-gboolean netconfig_wifi_is_powersave_mode(void);
+#define ETH_REG_BMSR	   	0x01
+#define BMSR_LINK_VALID		0x0004
 
-void netconfig_wifi_powersave_start(void);
-void netconfig_wifi_powersave_stop(void);
+#define SIOCGMIIPHY		0x8947		/* Get address of MII PHY in use. */
+#define SIOCGMIIREG		0x8948		/* Read MII PHY register.	*/
 
-void netconfig_wifi_powersave_init(void);
-void netconfig_wifi_powersave_deinit(void);
-void netconfig_wifi_early_suspend(gboolean value);
+struct _stMData {
+    unsigned short phy_id;
+    unsigned short reg_num;
+    unsigned short val_in;
+    unsigned short val_out;
+};
+
+int netconfig_ethernet_cable_plugin_status_check();
+int netconfig_get_ethernet_cable_state(int *status);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* __NETCONFIG_WIFI_POWERSAVE_H__ */
+#endif /* __NETCONFIG_NETWORK_MONITOR_H__ */

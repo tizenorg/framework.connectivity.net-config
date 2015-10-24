@@ -22,334 +22,173 @@
 #include "netsupplicant.h"
 
 #define DBUS_OBJECT_PATH_MAX			150
-#define NETCONFIG_DBUS_REPLY_TIMEOUT	(10 * 1000)
-
-static void setup_dbus_args(gpointer data, gpointer user_data)
-{
-	DBusMessageIter *iter;
-	struct dbus_input_arguments *args;
-
-	if (data == NULL || user_data == NULL)
-		return;
-
-	iter = (DBusMessageIter *) user_data;
-	args = (struct dbus_input_arguments *)data;
-	if (args->data == NULL)
-		return;
-
-	switch (args->type) {
-	case DBUS_TYPE_STRING:
-	case DBUS_TYPE_OBJECT_PATH:
-		DBG("parameter [%s]", args->data);
-		dbus_message_iter_append_basic(iter, args->type, &(args->data));
-		break;
-	case DBUS_TYPE_BOOLEAN:
-	case DBUS_TYPE_UINT32:
-	case DBUS_TYPE_INT32:
-		DBG("parameter [%d]", args->data);
-		dbus_message_iter_append_basic(iter, args->type, args->data);
-		break;
-	case DBUS_TYPE_INVALID:
-	default:
-		return;
-	}
-}
-
-GList *setup_input_args(GList *list, struct dbus_input_arguments *items)
-{
-	struct dbus_input_arguments *iter = items;
-
-	if (iter == NULL)
-		return NULL;
-
-	while (iter->data) {
-		list = g_list_append(list, iter);
-		iter++;
-	}
-
-	return list;
-}
 
 const char *netconfig_wifi_get_supplicant_interface(void)
 {
-	GList *input_args = NULL;
-	DBusMessage *message = NULL;
-	struct dbus_input_arguments args[] = {
-			{DBUS_TYPE_STRING, WIFI_IFNAME},
-			{DBUS_TYPE_INVALID, NULL}
-	};
-	const char *path;
+	GVariant *message = NULL;
+	GVariant *params = NULL;
+	gchar *path = NULL;
 	static char obj_path[DBUS_OBJECT_PATH_MAX] = { '\0', };
 
 	if (obj_path[0] != '\0')
 		return (const char *)obj_path;
 
-	input_args = setup_input_args(input_args, args);
+	params = g_variant_new("(s)", WIFI_IFNAME);
 
 	message = netconfig_supplicant_invoke_dbus_method(
 			SUPPLICANT_SERVICE, SUPPLICANT_PATH,
-			SUPPLICANT_INTERFACE, "GetInterface", input_args);
+			SUPPLICANT_INTERFACE, "GetInterface", params);
 
-	g_list_free(input_args);
-
-	if (message == NULL)
+	if (message == NULL) {
+		ERR("Failed to get object path");
 		return NULL;
-
-	if (dbus_message_get_type(message) == DBUS_MESSAGE_TYPE_ERROR) {
-		const char *err_msg = dbus_message_get_error_name(message);
-		ERR("Error!!! Error message received %s", err_msg);
-		goto error;
 	}
 
-	dbus_message_get_args(message, NULL, DBUS_TYPE_OBJECT_PATH, &path,
-							DBUS_TYPE_INVALID);
+	g_variant_get(message, "(o)", &path);
 
 	g_strlcpy(obj_path, path, DBUS_OBJECT_PATH_MAX);
 
-	dbus_message_unref(message);
+	if (path)
+		g_free(path);
+	g_variant_unref(message);
 
 	return (const char *)obj_path;
-
-error:
-	if (message != NULL)
-		dbus_message_unref(message);
-
-	return NULL;
 }
 
-DBusMessage *netconfig_supplicant_invoke_dbus_method(const char *dest,
-		const char *path, const char *interface_name,
-		const char *method, GList *args)
+GVariant *netconfig_supplicant_invoke_dbus_method(const char *dest, const char *path,
+		const char *interface_name, const char *method, GVariant *params)
 {
-	DBusError error;
-	DBusMessageIter iter;
-	DBusMessage *reply = NULL;
-	DBusMessage *message = NULL;
-	DBusConnection *connection = NULL;
+	GError *error = NULL;
+	GVariant *reply = NULL;
+	GDBusConnection *connection = NULL;
 
 	INFO("[DBUS Sync] %s %s %s", interface_name, method, path);
 
-	connection = dbus_bus_get(DBUS_BUS_SYSTEM, NULL);
+	connection = netdbus_get_connection();
 	if (connection == NULL) {
-		ERR("Failed to get system bus");
+		ERR("Failed to get GDBus Connection");
 		return NULL;
 	}
 
-	message = dbus_message_new_method_call(dest, path, interface_name, method);
-	if (message == NULL) {
-		ERR("Failed DBus method call");
-		dbus_connection_unref(connection);
-		return NULL;
-	}
-
-	dbus_message_iter_init_append(message, &iter);
-
-	if (args != NULL)
-		g_list_foreach(args, setup_dbus_args, (gpointer)&iter);
-
-	dbus_error_init(&error);
-
-	reply =	dbus_connection_send_with_reply_and_block(connection, message,
-			NETCONFIG_DBUS_REPLY_TIMEOUT, &error);
+	reply = g_dbus_connection_call_sync(
+			connection,
+			dest,
+			path,
+			interface_name,
+			method,
+			params,
+			NULL,
+			G_DBUS_CALL_FLAGS_NONE,
+			NETCONFIG_DBUS_REPLY_TIMEOUT,
+			netdbus_get_cancellable(),
+			&error);
 
 	if (reply == NULL) {
-		if (dbus_error_is_set(&error) == TRUE) {
-			ERR("dbus_connection_send_with_reply_and_block() failed. "
-					"DBus error [%s: %s]", error.name, error.message);
-
-			dbus_error_free(&error);
-		} else
-			ERR("Failed to get properties");
-
-		dbus_message_unref(message);
-		dbus_connection_unref(connection);
+		if (error != NULL) {
+			ERR("g_dbus_connection_call_sync() failed"
+						"error [%d: %s]", error->code, error->message);
+			g_error_free(error);
+		} else {
+			ERR("g_dbus_connection_call_sync() failed");
+		}
 
 		return NULL;
 	}
-
-	dbus_message_unref(message);
-	dbus_connection_unref(connection);
 
 	return reply;
 }
 
-dbus_bool_t netconfig_supplicant_invoke_dbus_method_nonblock(const char *dest,
-			const char *path, const char *interface_name,
-			const char *method, GList *args,
-			DBusPendingCallNotifyFunction notify_func)
+gboolean netconfig_supplicant_invoke_dbus_method_nonblock(const char *dest,
+		const char *path, const char *interface_name,
+		const char *method, GVariant *params,
+		GAsyncReadyCallback notify_func)
 {
-	dbus_bool_t result = FALSE;
-	DBusMessageIter iter;
-	DBusPendingCall *call;
-	DBusMessage *message = NULL;
-	DBusConnection *connection = NULL;
+	GDBusConnection *connection = NULL;
 
 	INFO("[DBUS Async] %s %s %s", interface_name, method, path);
 
-	connection = dbus_bus_get(DBUS_BUS_SYSTEM, NULL);
+	connection = netdbus_get_connection();
 	if (connection == NULL) {
-		ERR("Failed to get system bus");
-		return result;
+		DBG("Failed to get GDBusconnection");
+		return FALSE;
 	}
 
-	message = dbus_message_new_method_call(dest, path, interface_name, method);
-	if (message == NULL) {
-		ERR("Failed DBus method call");
-		dbus_connection_unref(connection);
-		return result;
-	}
+	g_dbus_connection_call(connection,
+			dest,
+			path,
+			interface_name,
+			method,
+			params,
+			NULL,
+			G_DBUS_CALL_FLAGS_NONE,
+			NETCONFIG_DBUS_REPLY_TIMEOUT,
+			netdbus_get_cancellable(),
+			(GAsyncReadyCallback) notify_func,
+			NULL);
 
-	dbus_message_iter_init_append(message, &iter);
-
-	if (args != NULL)
-		g_list_foreach(args, setup_dbus_args, (gpointer)&iter);
-
-	result = dbus_connection_send_with_reply(connection, message, &call,
-			NETCONFIG_DBUS_REPLY_TIMEOUT);
-	if (result == FALSE || call == NULL) {
-		ERR("dbus_connection_send_with_reply() failed");
-
-		dbus_message_unref(message);
-		dbus_connection_unref(connection);
-
-		return result;
-	}
-
-	if (notify_func == NULL)
-		dbus_pending_call_cancel(call);
-	else
-		dbus_pending_call_set_notify(call, notify_func, NULL, NULL);
-
-	dbus_message_unref(message);
-	dbus_connection_unref(connection);
-
-	return result;
+	return TRUE;
 }
 
-DBusMessage *netconfig_supplicant_invoke_dbus_interface_property_get(const char *interface,
+GVariant *netconfig_supplicant_invoke_dbus_interface_property_get(const char *interface,
 			const char *key)
 {
-	DBusError error;
-	DBusMessage *reply = NULL;
-	DBusMessage *message = NULL;
-	DBusConnection *connection = NULL;
+	GVariant *params = NULL;
+	GVariant *reply = NULL;
 	const char *path;
 
-	ERR("[DBUS] property_get : %s", key);
-
-	connection = dbus_bus_get(DBUS_BUS_SYSTEM, NULL);
-	if (connection == NULL) {
-		ERR("Failed to get system bus");
-		return NULL;
-	}
+	ERR("[GDBUS] property_get : %s", key);
 
 	path = netconfig_wifi_get_supplicant_interface();
 	if (path == NULL) {
 		DBG("Failed to get wpa_supplicant DBus path");
-		dbus_connection_unref(connection);
 		return NULL;
 	}
 
-	message = dbus_message_new_method_call(SUPPLICANT_SERVICE, path,
-					DBUS_INTERFACE_PROPERTIES, "Get");
-	if (message == NULL) {
-		ERR("Failed DBus method call");
-		dbus_connection_unref(connection);
-		return NULL;
-	}
+	params = g_variant_new("(ss)", interface, key);
 
-	dbus_message_append_args(message, DBUS_TYPE_STRING, &interface,
-					DBUS_TYPE_STRING, &key, NULL);
+	reply = netconfig_supplicant_invoke_dbus_method(SUPPLICANT_SERVICE,
+			path,
+			DBUS_INTERFACE_PROPERTIES,
+			"Get",
+			params);
 
-	dbus_error_init(&error);
-
-	reply = dbus_connection_send_with_reply_and_block(connection, message,
-				NETCONFIG_DBUS_REPLY_TIMEOUT, &error);
 	if (reply == NULL) {
-		if (dbus_error_is_set(&error) == TRUE) {
-			ERR("dbus_connection_send_with_reply_and_block() failed. "
-					"DBus error [%s: %s]", error.name, error.message);
-
-			dbus_error_free(&error);
-		} else
-			ERR("Failed to get properties");
-
-		dbus_message_unref(message);
-		dbus_connection_unref(connection);
-
+		ERR("netconfig_supplicant_invoke_dbus_method() failed.");
 		return NULL;
 	}
-
-	dbus_message_unref(message);
-	dbus_connection_unref(connection);
 
 	return reply;
 }
 
-dbus_bool_t netconfig_supplicant_invoke_dbus_interface_property_set(const char *interface,
-			const char *key, const char *type, GList *args,
-			DBusPendingCallNotifyFunction notify_func)
+gboolean netconfig_supplicant_invoke_dbus_interface_property_set(const char *interface,
+			const char *key, GVariant *var,
+			GAsyncReadyCallback notify_func)
 {
-	dbus_bool_t result = FALSE;
-	DBusPendingCall *call;
-	DBusMessage *message = NULL;
-	DBusConnection *connection = NULL;
-	DBusMessageIter iter, value;
+	gboolean result = FALSE;
+	GVariant *message = NULL;
 	const char *path;
 
 	DBG("[DBUS] property_set : %s", key);
 
-	connection = dbus_bus_get(DBUS_BUS_SYSTEM, NULL);
-	if (connection == NULL) {
-		ERR("Failed to get system bus");
-		return result;
-	}
-
 	path = netconfig_wifi_get_supplicant_interface();
 	if (path == NULL) {
 		ERR("Failed to get wpa_supplicant DBus path");
-		dbus_connection_unref(connection);
 		return result;
 	}
 
-	message = dbus_message_new_method_call(SUPPLICANT_SERVICE, path,
-					DBUS_INTERFACE_PROPERTIES, "Set");
-	if (message == NULL) {
-		ERR("Failed DBus method call");
-		dbus_connection_unref(connection);
-		return result;
-	}
+	message = g_variant_new("(ssv)", interface, key, var);
+	result = netconfig_invoke_dbus_method_nonblock(SUPPLICANT_SERVICE,
+			path,
+			DBUS_INTERFACE_PROPERTIES,
+			"Set",
+			message,
+			notify_func);
 
-	dbus_message_iter_init_append(message, &iter);
-	dbus_message_iter_append_basic(&iter, DBUS_TYPE_STRING, &interface);
-	dbus_message_iter_append_basic(&iter, DBUS_TYPE_STRING, &key);
-
-	dbus_message_iter_open_container(&iter, DBUS_TYPE_VARIANT,
-					type, &value);
-
-	if (args != NULL)
-		g_list_foreach(args, setup_dbus_args, (gpointer)&value);
-
-	dbus_message_iter_close_container(&iter, &value);
-
-	result = dbus_connection_send_with_reply(connection, message, &call,
-			NETCONFIG_DBUS_REPLY_TIMEOUT);
-	if (result == FALSE || call == NULL) {
+	if (result == FALSE) {
 		ERR("dbus_connection_send_with_reply() failed");
 
-		dbus_message_unref(message);
-		dbus_connection_unref(connection);
-
 		return result;
 	}
-
-	if (notify_func == NULL)
-		dbus_pending_call_cancel(call);
-	else
-		dbus_pending_call_set_notify(call, notify_func, NULL, NULL);
-
-	dbus_message_unref(message);
-	dbus_connection_unref(connection);
 
 	return result;
 }

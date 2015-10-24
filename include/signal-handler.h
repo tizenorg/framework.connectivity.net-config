@@ -24,8 +24,8 @@
 extern "C" {
 #endif
 
-void netconfig_register_signal(void);
-void netconfig_deregister_signal(void);
+void register_gdbus_signal(void);
+void deregister_gdbus_signal(void);
 
 #ifdef __cplusplus
 }

@@ -26,8 +26,8 @@ extern "C" {
 
 #include <glib.h>
 
-gboolean netconfig_emulator_is_emulated(void);
-void netconfig_emulator_test_and_start(void);
+gboolean	emulator_is_emulated(void);
+void		emulator_test_and_start(void);
 
 #ifdef __cplusplus
 }

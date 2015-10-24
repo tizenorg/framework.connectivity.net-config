@@ -34,6 +34,17 @@ extern "C" {
 #define NETCONFIG_DEL_PORTAL_NOTI		"del_portal_noti"
 #define NETCONFIG_TIZENMOBILEENV 		"/run/tizen-mobile-env"
 
+#define MAX_SIZE_ERROR_BUFFER 256
+
+#if defined TIZEN_WEARABLE
+typedef enum {
+	WC_POPUP_TYPE_SESSION_OVERLAPPED,
+	WC_POPUP_TYPE_WIFI_CONNECTED,
+	WC_POPUP_TYPE_CAPTIVE_PORTAL,
+	WC_POPUP_TYPE_WIFI_RESTRICT
+}netconfig_wcpopup_type_e;
+#endif
+
 GKeyFile *netconfig_keyfile_load(const char *pathname);
 void netconfig_keyfile_save(GKeyFile *keyfile, const char *pathname);
 
@@ -53,19 +64,27 @@ gboolean netconfig_is_wifi_tethering_on(void);
 gboolean netconfig_interface_up(const char *ifname);
 gboolean netconfig_interface_down(const char *ifname);
 
-int netconfig_execute_file(const char *file_path,
-		char *const args[], char *const env[]);
+int netconfig_execute_file(const char *file_path, char *const args[], char *const env[]);
+int netconfig_execute_clatd(const char *file_path, char *const args[]);
 int netconfig_add_route_ipv6(gchar *ip_addr, gchar *interface, gchar *gateway, unsigned char prefix_len);
 int netconfig_del_route_ipv6(gchar *ip_addr, gchar *interface, gchar *gateway, unsigned char prefix_len);
+int netconfig_add_route_ipv4(gchar *ip_addr, gchar *subnet, gchar *interface, gint address_family);
+int netconfig_del_route_ipv4(gchar *ip_addr, gchar *subnet, gchar *interface, gint address_family);
 
-gboolean netconfig_iface_wifi_launch_direct(NetconfigWifi *wifi, GError **error);
+gboolean handle_launch_direct(Wifi *wifi, GDBusMethodInvocation *context);
 
 gboolean netconfig_send_notification_to_net_popup(const char * noti, const char * data);
 int netconfig_send_message_to_net_popup(const char *title,
 		const char *content, const char *type, const char *ssid);
+void netconfig_set_system_event(const char * sys_evt, const char * evt_key, const char * evt_val);
+#if defined TIZEN_WEARABLE
+int wc_launch_syspopup(netconfig_wcpopup_type_e type);
+int wc_launch_popup(netconfig_wcpopup_type_e type);
+#endif
 void netconfig_set_vconf_int(const char * key, int value);
 void netconfig_set_vconf_str(const char * key, const char * value);
 char* netconfig_get_env(const char *key);
+void netconfig_set_mac_address_from_file(void);
 
 #ifdef __cplusplus
 }

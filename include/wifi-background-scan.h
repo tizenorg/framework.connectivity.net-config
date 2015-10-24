@@ -35,12 +35,9 @@ void netconfig_wifi_set_scanning(gboolean scanning);
 gboolean netconfig_wifi_is_bgscan_paused(void);
 void netconfig_wifi_set_bgscan_pause(gboolean pause);
 
-gboolean netconfig_iface_wifi_set_bgscan(
-		NetconfigWifi *wifi, guint scan_mode, GError **error);
-gboolean netconfig_iface_wifi_resume_bgscan(
-		NetconfigWifi *wifi, GError **error);
-gboolean netconfig_iface_wifi_pause_bgscan(
-		NetconfigWifi *wifi, GError **error);
+gboolean handle_set_bgscan(Wifi *wifi, GDBusMethodInvocation *context, guint scan_mode);
+gboolean handle_resume_bgscan(Wifi *wifi, GDBusMethodInvocation *context);
+gboolean handle_pause_bgscan(Wifi *wifi, GDBusMethodInvocation *context);
 
 
 #ifdef __cplusplus

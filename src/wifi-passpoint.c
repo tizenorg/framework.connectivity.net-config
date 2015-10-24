@@ -29,40 +29,28 @@
 #if defined TIZEN_WLAN_PASSPOINT
 static gboolean netconfig_wifi_get_passpoint(gint32 *enabled)
 {
-	DBusMessage *reply;
-	DBusMessageIter iter, variant;
-	dbus_bool_t value;
+	GVariant *reply;
+	gboolean value;
 	gboolean result = FALSE;
 
 	reply = netconfig_supplicant_invoke_dbus_interface_property_get(SUPPLICANT_IFACE_INTERFACE,
 				"Passpoint");
 	if (reply == NULL) {
 		ERR("Error!!! Failed to get passpoint property");
-		return result;
+		return FALSE;
 	}
 
-	if (dbus_message_get_type(reply) == DBUS_MESSAGE_TYPE_ERROR) {
-		const char *err_msg = dbus_message_get_error_name(reply);
-		ERR("Error!!! Error message received[%s]", err_msg);
-		return result;
+	if (g_variant_is_of_type(reply, G_VARIANT_TYPE_INT32)) {
+		value = g_variant_get_int32(reply);
+		if (value == TRUE)
+			*enabled = 1;
+		else
+			*enabled = 0;
+
+		result = TRUE;
 	}
 
-	dbus_message_iter_init(reply, &iter);
-
-	if (dbus_message_iter_get_arg_type(&iter) == DBUS_TYPE_VARIANT) {
-		dbus_message_iter_recurse(&iter, &variant);
-		if (dbus_message_iter_get_arg_type(&variant) == DBUS_TYPE_INT32) {
-			dbus_message_iter_get_basic(&variant, &value);
-			if (value == TRUE)
-				*enabled = 1;
-			else
-				*enabled = 0;
-
-			result = TRUE;
-		}
-	}
-
-	dbus_message_unref(reply);
+	g_variant_unref(reply);
 
 	return result;
 }
@@ -71,52 +59,49 @@ static gboolean netconfig_wifi_set_passpoint(gint32 enable)
 {
 	gint32 value = enable ? 1 : 0;
 	gboolean result = FALSE;
-	GList *input_args = NULL;
+	GVariant *input_args = NULL;
 
-	struct dbus_input_arguments args_enable[2] = {
-			{DBUS_TYPE_INT32, &value},
-			{DBUS_TYPE_INVALID, NULL}
-	};
-
-	input_args = setup_input_args(input_args, args_enable);
+	input_args = g_variant_new_int32(value);
 
 	result = netconfig_supplicant_invoke_dbus_interface_property_set(
-			SUPPLICANT_IFACE_INTERFACE, "Passpoint",
-			DBUS_TYPE_INT32_AS_STRING, input_args, NULL);
+			SUPPLICANT_IFACE_INTERFACE, "Passpoint", input_args, NULL);
 	if (result == FALSE)
 		ERR("Fail to set passpoint enable[%d]", enable);
-
-	g_list_free(input_args);
 
 	return result;
 }
 #endif
 
-gboolean netconfig_iface_wifi_get_passpoint(NetconfigWifi *wifi,
-		gint32 *result, GError **error)
+gboolean handle_get_passpoint(Wifi *wifi, GDBusMethodInvocation *context)
 {
+	gint32 enable = 0;
 	g_return_val_if_fail(wifi != NULL, FALSE);
 
 #if defined TIZEN_WLAN_PASSPOINT
-	if (netconfig_wifi_get_passpoint(result))
+	if (netconfig_wifi_get_passpoint(&enable)){
+		wifi_complete_get_passpoint(wifi, context, enable);
 		return TRUE;
-
+	}
+	wifi_complete_get_passpoint(wifi, context, enable);
 	return FALSE;
 #else
-	*result = 0;
-
+	enable = 0;
+	wifi_complete_get_passpoint(wifi, context, enable);
 	return TRUE;
 #endif
 }
 
-gboolean netconfig_iface_wifi_set_passpoint(NetconfigWifi *wifi,
-		gint32 enable, GError **error)
+gboolean handle_set_passpoint(Wifi *wifi, GDBusMethodInvocation *context, gint enable)
 {
+	gboolean result = FALSE;
 	g_return_val_if_fail(wifi != NULL, FALSE);
 
 #if defined TIZEN_WLAN_PASSPOINT
-	return netconfig_wifi_set_passpoint(enable);
+	result = netconfig_wifi_set_passpoint(enable);
+	wifi_complete_set_passpoint(wifi, context);
+	return result;
 #else
-	return FALSE;
+	wifi_complete_set_passpoint(wifi, context);
+	return result;
 #endif
 }

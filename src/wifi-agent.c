@@ -71,82 +71,73 @@ static void __netconfig_agent_clear_fields(void)
 	agent.wps_pbc = FALSE;
 }
 
-gboolean netconfig_agent_register(void)
+int connman_register_agent(void)
 {
-	DBusError error;
-	DBusMessageIter iter;
-	DBusMessage *reply = NULL;
-	DBusMessage *message = NULL;
-	DBusConnection *connection = NULL;
-	const char *path = NETCONFIG_WIFI_PATH;
+	GVariant *reply = NULL;
+	GVariant *params = NULL;
+	GError *error;
+	GDBusConnection *connection = NULL;
 
-	DBG("ConnMan agent register");
-
-	connection = dbus_bus_get(DBUS_BUS_SYSTEM, NULL);
+	connection = netdbus_get_connection();
 	if (connection == NULL) {
-		ERR("Failed to get system bus");
-		return FALSE;
+		ERR("GDBusconnection is NULL");
+		return -1;
 	}
-
-	message = dbus_message_new_method_call(CONNMAN_SERVICE,
-			CONNMAN_MANAGER_PATH, CONNMAN_MANAGER_INTERFACE, "RegisterAgent");
-	if (message == NULL) {
-		ERR("Failed DBus method call");
-		dbus_connection_unref(connection);
-		return FALSE;
-	}
-
-	dbus_message_iter_init_append(message, &iter);
-	dbus_message_iter_append_basic(&iter, DBUS_TYPE_OBJECT_PATH, &path);
 
 	do {
-		dbus_error_init(&error);
+		error = NULL;
+		params = g_variant_new("(o)", NETCONFIG_WIFI_PATH);
 
-		reply = dbus_connection_send_with_reply_and_block(connection, message,
-				10 * 1000, &error);
+		reply = g_dbus_connection_call_sync(
+				connection,
+				CONNMAN_SERVICE,
+				CONNMAN_MANAGER_PATH,
+				CONNMAN_MANAGER_INTERFACE,
+				"RegisterAgent",
+				params,
+				NULL,
+				G_DBUS_CALL_FLAGS_NONE,
+				DBUS_REPLY_TIMEOUT,
+				netdbus_get_cancellable(),
+				&error);
 
 		if (reply == NULL) {
-			if (dbus_error_is_set(&error) == TRUE) {
-				if (g_strcmp0(error.name,
-						"net.connman.Error.AlreadyExists") == 0) {
-					dbus_error_free(&error);
-
+	    	 if (error != NULL) {
+	    		 if (g_strcmp0(error->message,
+	    				 "GDBus.Error:net.connman.Error.AlreadyExists: Already exists") == 0) {
 					break;
-				} else {
-					ERR("Fail to register agent [%s: %s]",
-									error.name, error.message);
-					dbus_error_free(&error);
-				}
-			} else {
-				ERR("Fail to register agent");
-			}
-		}
+	    		 } else {
+	    			 ERR("Fail to register agent [%d: %s]",
+	    					 error->code, error->message);
+	    		 }
 
-		if (reply != NULL)
-			dbus_message_unref(reply);
+	    		 g_error_free(error);
+	    	 } else
+	    		 ERR("Fail to register agent");
+		} else
+			g_variant_unref(reply);
 
 		sleep(1);
 	} while (TRUE);
 
-	dbus_message_unref(message);
-	dbus_connection_unref(connection);
+	INFO("Registered to connman agent successfully");
 
-	return TRUE;
+	return 0;
 }
 
-gboolean netconfig_agent_unregister(void)
+int connman_unregister_agent(void)
 {
-	gboolean reply;
-	char param0[] = "objpath:" NETCONFIG_WIFI_PATH;
-	char *param_array[] = { NULL, NULL };
+	gboolean reply = FALSE;
+	GVariant *param = NULL;
+	const char *path = NETCONFIG_WIFI_PATH;
 
-	param_array[0] = param0;
+	param = g_variant_new("(o)", path);
 
 	DBG("ConnMan agent unregister");
 
 	reply = netconfig_invoke_dbus_method_nonblock(CONNMAN_SERVICE,
 			CONNMAN_MANAGER_PATH, CONNMAN_MANAGER_INTERFACE,
-			"UnregisterAgent", param_array, NULL);
+			"UnregisterAgent", param, NULL);
 
 	if (reply != TRUE)
 		ERR("Fail to unregister agent");
@@ -183,40 +174,38 @@ gboolean netconfig_wifi_set_agent_field_for_eap_network(
 	return TRUE;
 }
 
-gboolean netconfig_iface_wifi_set_field(NetconfigWifi *wifi,
-		gchar *service, GHashTable *fields,
-		DBusGMethodInvocation *context)
+gboolean handle_set_field(NetConnmanAgent *connman_agent,
+		GDBusMethodInvocation *context, const gchar *service, GVariant *fields)
 {
-	GError *error;
-	GHashTableIter iter;
-	gpointer field, value;
+	GError *error = NULL;
+	GVariantIter *iter;
+	gpointer field;
+	GVariant *value;
 	gboolean updated = FALSE;
 	gboolean reply = FALSE;
 
-	g_return_val_if_fail(wifi != NULL, FALSE);
+	g_return_val_if_fail(connman_agent != NULL, FALSE);
 
 	DBG("Set agent fields for %s", service);
 
 	if (netconfig_is_wifi_profile(service) != TRUE) {
-		error = g_error_new(DBUS_GERROR,
-				DBUS_GERROR_AUTH_FAILED,
+		error = g_error_new(G_DBUS_ERROR,
+				G_DBUS_ERROR_AUTH_FAILED,
 				CONNMAN_ERROR_INTERFACE ".InvalidService");
 
-		dbus_g_method_return_error(context, error);
+		g_dbus_method_invocation_return_gerror(context, error);
 		g_clear_error(&error);
 
 		return reply;
 	}
 
 	__netconfig_agent_clear_fields();
-
-	g_hash_table_iter_init(&iter, fields);
-
-	while (g_hash_table_iter_next(&iter, &field, &value)) {
+	g_variant_get(fields, "a{sv}", &iter);
+	while (g_variant_iter_loop(iter, "{sv}", &field, &value)) {
 		if (g_strcmp0(field, NETCONFIG_AGENT_FIELD_PASSPHRASE) == 0) {
 			g_free(agent.passphrase);
-			if (G_VALUE_TYPE(value) == G_TYPE_STRING) {
-				agent.passphrase = g_value_dup_string(value);
+			if (g_variant_is_of_type(value, G_VARIANT_TYPE_STRING)) {
+				agent.passphrase = g_strdup(g_variant_get_string(value, NULL));
 				updated = TRUE;
 
 				DBG("Field [%s] - []", field);
@@ -225,8 +214,8 @@ gboolean netconfig_iface_wifi_set_field(NetconfigWifi *wifi,
 			}
 		} else if (g_strcmp0(field, NETCONFIG_AGENT_FIELD_WPS_PBC) == 0) {
 			agent.wps_pbc = FALSE;
-			if (G_VALUE_TYPE(value) == G_TYPE_STRING &&
-					g_strcmp0(g_value_get_string(value), "enable") == 0) {
+			if (g_variant_is_of_type(value, G_VARIANT_TYPE_STRING) &&
+					g_strcmp0(g_variant_get_string(value, NULL), "enable") == 0) {
 				agent.wps_pbc = TRUE;
 				updated = TRUE;
 
@@ -235,8 +224,8 @@ gboolean netconfig_iface_wifi_set_field(NetconfigWifi *wifi,
 		} else if (g_strcmp0(field, NETCONFIG_AGENT_FIELD_WPS_PIN) == 0) {
 			g_free(agent.wps_pin);
 			agent.wps_pbc = FALSE;
-			if (G_VALUE_TYPE(value) == G_TYPE_STRING) {
-				agent.wps_pin = g_value_dup_string(value);
+			if (g_variant_is_of_type(value, G_VARIANT_TYPE_STRING)) {
+				agent.wps_pin = g_strdup(g_variant_get_string(value, NULL));
 				updated = TRUE;
 
 				DBG("Field [%s] - []", field);
@@ -245,8 +234,8 @@ gboolean netconfig_iface_wifi_set_field(NetconfigWifi *wifi,
 			}
 		} else if (g_strcmp0(field, NETCONFIG_AGENT_FIELD_NAME) == 0) {
 			g_free(agent.name);
-			if (G_VALUE_TYPE(value) == G_TYPE_STRING) {
-				agent.name = g_value_dup_string(value);
+			if (g_variant_is_of_type(value, G_VARIANT_TYPE_STRING)) {
+				agent.name = g_strdup(g_variant_get_string(value, NULL));
 				updated = TRUE;
 
 				DBG("Field [%s] - []", field);
@@ -259,8 +248,16 @@ gboolean netconfig_iface_wifi_set_field(NetconfigWifi *wifi,
 				agent.ssid = NULL;
 			}
 
-			if (G_VALUE_HOLDS(value, DBUS_TYPE_G_UCHAR_ARRAY) == TRUE) {
-				GByteArray *array = (GByteArray *)g_value_get_boxed(value);
+			if (g_variant_is_of_type(value, G_VARIANT_TYPE_BYTESTRING)) {
+				guint8 char_value;
+				GVariantIter *iter1;
+				GByteArray *array = g_byte_array_new();
+
+				g_variant_get(value, "ay", &iter1);
+				while(g_variant_iter_loop(iter1, "y",  &char_value)) {
+					g_byte_array_append(array, &char_value, 1);
+				}
+				g_variant_iter_free(iter1);
 				if (array != NULL && (array->len > 0)) {
 					agent.ssid = g_byte_array_sized_new(array->len);
 					agent.ssid->len = array->len;
@@ -272,8 +269,8 @@ gboolean netconfig_iface_wifi_set_field(NetconfigWifi *wifi,
 			}
 		} else if (g_strcmp0(field, NETCONFIG_AGENT_FIELD_IDENTITY) == 0) {
 			g_free(agent.identity);
-			if (G_VALUE_TYPE(value) == G_TYPE_STRING) {
-				agent.identity = g_value_dup_string(value);
+			if (g_variant_is_of_type(value, G_VARIANT_TYPE_STRING)) {
+				agent.identity = g_strdup(g_variant_get_string(value, NULL));
 				updated = TRUE;
 
 				DBG("Field [%s] - []", field);
@@ -287,21 +284,21 @@ gboolean netconfig_iface_wifi_set_field(NetconfigWifi *wifi,
 		reply = netconfig_invoke_dbus_method_nonblock(CONNMAN_SERVICE,
 				service, CONNMAN_SERVICE_INTERFACE, "Connect", NULL, NULL);
 		if (reply == TRUE) {
-			dbus_g_method_return(context);
+			g_dbus_method_invocation_return_value (context, NULL);
 		} else {
-			error = g_error_new(DBUS_GERROR,
-					DBUS_GERROR_AUTH_FAILED,
+			error = g_error_new(G_DBUS_ERROR,
+					G_DBUS_ERROR_AUTH_FAILED,
 					CONNMAN_ERROR_INTERFACE ".InvalidArguments");
 
-			dbus_g_method_return_error(context, error);
+			g_dbus_method_invocation_return_gerror(context, error);
 			g_clear_error(&error);
 		}
 	} else {
-		error = g_error_new(DBUS_GERROR,
-				DBUS_GERROR_AUTH_FAILED,
+		error = g_error_new(G_DBUS_ERROR,
+				G_DBUS_ERROR_AUTH_FAILED,
 				CONNMAN_ERROR_INTERFACE ".InvalidArguments");
 
-		dbus_g_method_return_error(context, error);
+		g_dbus_method_invocation_return_gerror(context, error);
 		g_clear_error(&error);
 	}
 
@@ -310,130 +307,127 @@ gboolean netconfig_iface_wifi_set_field(NetconfigWifi *wifi,
 
 		__netconfig_agent_clear_fields();
 	}
+	g_variant_iter_free(iter);
 
+	net_connman_agent_complete_set_field(connman_agent, context);
 	return reply;
 }
 
-static void __g_slice_value_free(gpointer data)
+gboolean handle_request_input(NetConnmanAgent *connman_agent,
+		GDBusMethodInvocation *context, const gchar *service, GVariant *fields)
 {
-	g_slice_free(GValue, data);
-}
-
-gboolean netconfig_iface_wifi_request_input(NetconfigWifi *wifi,
-		gchar *service, GHashTable *fields,
-		DBusGMethodInvocation *context)
-{
-	GError *error;
-	GHashTableIter iter;
-	gpointer field, r_value;
-	GHashTable *out_table = NULL;
-	GValue *value = NULL;
+	GVariantIter *iter;
+	gchar *field = NULL;
+	GVariant *r_value = NULL;
+	GVariant *out_table = NULL;
 	gboolean updated = FALSE;
+	GVariantBuilder *builder = NULL;
 
-	g_return_val_if_fail(wifi != NULL, FALSE);
+	g_return_val_if_fail(connman_agent != NULL, FALSE);
 
 	if (NULL == service)
 		return FALSE;
 
 	DBG("Agent fields requested for service: %s", service);
 
-	out_table = g_hash_table_new_full(g_str_hash, g_str_equal,
-			g_free, __g_slice_value_free);
-	if (NULL == out_table)
-		return FALSE;
+	builder = g_variant_builder_new(G_VARIANT_TYPE ("a{sv}"));
 
-	g_hash_table_iter_init(&iter, fields);
+	g_variant_get(fields, "a{sv}", &iter);
+	while (g_variant_iter_loop(iter, "{sv}", &field, &r_value)) {
 
-	while (g_hash_table_iter_next(&iter, &field, &r_value)) {
 		if (g_strcmp0(field, NETCONFIG_AGENT_FIELD_PASSPHRASE) == 0 &&
 				agent.passphrase != NULL) {
-			value = g_slice_new0(GValue);
-
-			g_value_init(value, G_TYPE_STRING);
-			g_value_set_string(value, agent.passphrase);
-			g_hash_table_insert(out_table, g_strdup(field), value);
+			g_variant_builder_add(builder, "{sv}", NETCONFIG_AGENT_FIELD_PASSPHRASE,
+							g_variant_new_string(agent.passphrase));
 
 			updated = TRUE;
 			DBG("Setting [%s] - []", field);
 		} else if (g_strcmp0(field, NETCONFIG_AGENT_FIELD_WPS) == 0 &&
 				(agent.wps_pbc == TRUE || agent.wps_pin != NULL)) {
-			value = g_slice_new0(GValue);
-
-			g_value_init(value, G_TYPE_STRING);
-
 			if (agent.wps_pbc == TRUE) {
-				/* Sending empty string for WPS push button method */
-				g_value_set_string(value, "");
-				g_hash_table_insert(out_table, g_strdup(field), value);
+				// Sending empty string for WPS push button method
+				g_variant_builder_add(builder, "{sv}", NETCONFIG_AGENT_FIELD_WPS, g_variant_new_string(""));
 
 				updated = TRUE;
 				DBG("Setting empty string for [%s]", field);
 			} else if (agent.wps_pin != NULL) {
-				g_value_set_string(value, agent.wps_pin);
-				g_hash_table_insert(out_table, g_strdup(field), value);
+				g_variant_builder_add(builder, "{sv}", NETCONFIG_AGENT_FIELD_WPS, g_variant_new_string(agent.wps_pin));
 
 				updated = TRUE;
 				DBG("Setting string [%s] - []", field);
 			}
 		} else if (g_strcmp0(field, NETCONFIG_AGENT_FIELD_NAME) == 0 &&
 				agent.name != NULL) {
-			value = g_slice_new0(GValue);
-
-			g_value_init(value, G_TYPE_STRING);
-			g_value_set_string(value, agent.name);
-			g_hash_table_insert(out_table, g_strdup(field), value);
+			g_variant_builder_add(builder, "{sv}", NETCONFIG_AGENT_FIELD_NAME, g_variant_new_string(agent.name));
 
 			updated = TRUE;
 			DBG("Settings [%s] - []", field);
 		} else if (g_strcmp0(field, NETCONFIG_AGENT_FIELD_SSID) == 0 &&
 				agent.ssid != NULL) {
-			value = g_slice_new0(GValue);
+			int i = 0;
+			GVariantBuilder *builder1 = NULL;
+			builder1 = g_variant_builder_new (G_VARIANT_TYPE ("ay"));
 
-			g_value_init(value, DBUS_TYPE_G_UCHAR_ARRAY);
-			g_value_set_boxed(value, agent.ssid);
-			g_hash_table_insert(out_table, g_strdup(field), value);
+			for (i = 0; i < (agent.ssid->len); i++) {
+				g_variant_builder_add (builder1, "y", agent.ssid->data[i]);
+			}
+
+			g_variant_builder_add(builder, "{sv}", NETCONFIG_AGENT_FIELD_SSID, g_variant_builder_end(builder1));
+			if (builder1 != NULL)
+				g_variant_builder_unref(builder1);
 
 			updated = TRUE;
 			DBG("Settings [%s] - []", field);
 		} else if (g_strcmp0(field, NETCONFIG_AGENT_FIELD_IDENTITY) == 0 &&
 				agent.identity != NULL) {
-			value = g_slice_new0(GValue);
-
-			g_value_init(value, G_TYPE_STRING);
-			g_value_set_string(value, agent.identity);
-			g_hash_table_insert(out_table, g_strdup(field), value);
+			g_variant_builder_add(builder, "{sv}", NETCONFIG_AGENT_FIELD_IDENTITY, g_variant_new_string(agent.identity));
 
 			updated = TRUE;
 			DBG("Settings [%s] - []", field);
 		}
 	}
 
+	out_table = g_variant_new("(@a{sv})", g_variant_builder_end(builder));
+
+	if (builder)
+		g_variant_builder_unref(builder);
+
+	g_variant_iter_free(iter);
+
+
+	if (NULL == out_table){
+		net_connman_agent_complete_request_input(connman_agent, context, out_table);
+
+		return FALSE;
+	}
+
 	if (updated == TRUE)
-		dbus_g_method_return(context, out_table);
+		g_dbus_method_invocation_return_value (context, out_table);
 	else {
-		error = g_error_new(DBUS_GERROR,
-				DBUS_GERROR_AUTH_FAILED,
+		GError *error = NULL;
+		error = g_error_new(G_DBUS_ERROR,
+				G_DBUS_ERROR_AUTH_FAILED,
 				"net.connman.Agent.Error.Canceled");
 
-		dbus_g_method_return_error(context, error);
+		g_dbus_method_invocation_return_gerror(context, error);
 		g_clear_error(&error);
 	}
 
 	__netconfig_agent_clear_fields();
-	g_hash_table_destroy(out_table);
+	g_variant_unref(out_table);
 
 	return updated;
 }
 
-gboolean netconfig_iface_wifi_report_error(NetconfigWifi *wifi,
-		gchar *service, gchar *error,
-		DBusGMethodInvocation *context)
+
+gboolean handle_report_error(NetConnmanAgent *connman_agent,
+		GDBusMethodInvocation *context, const gchar *service, const gchar *error)
 {
 	gboolean ret = TRUE;
 
-	g_return_val_if_fail(wifi != NULL, FALSE);
+	g_return_val_if_fail(connman_agent != NULL, FALSE);
 
-	dbus_g_method_return(context);
+	net_connman_agent_complete_report_error(connman_agent, context);
 	DBG("Agent error for service[%s] - [%s]", service, error);
 
 	// Do something when it failed to make a connection
@@ -492,15 +486,15 @@ static gboolean __check_ignore_portal_list(const char * ssid)
 	return FALSE;
 }
 
-static void __wifi_state_monitor(enum netconfig_wifi_service_state state,
+static void __wifi_state_monitor(wifi_service_state_e state,
 		void *user_data);
 
-static struct netconfig_wifi_state_notifier wifi_state_monitor_notifier = {
-		.netconfig_wifi_state_changed = __wifi_state_monitor,
+static wifi_state_notifier wifi_state_monitor_notifier = {
+		.wifi_state_changed = __wifi_state_monitor,
 		.user_data = NULL,
 };
 
-static void __wifi_state_monitor(enum netconfig_wifi_service_state state,
+static void __wifi_state_monitor(wifi_service_state_e state,
 		void *user_data)
 {
 	DBG("Wi-Fi state: %x", state);
@@ -509,7 +503,7 @@ static void __wifi_state_monitor(enum netconfig_wifi_service_state state,
 		return;
 
 	if (is_monitor_notifier_registered == TRUE) {
-		netconfig_wifi_state_notifier_unregister(&wifi_state_monitor_notifier);
+		wifi_state_notifier_unregister(&wifi_state_monitor_notifier);
 		is_monitor_notifier_registered = FALSE;
 	}
 
@@ -530,7 +524,7 @@ static void __wifi_state_monitor(enum netconfig_wifi_service_state state,
 static gboolean __netconfig_wifi_portal_login_timeout(gpointer data)
 {
 	char *service_profile = NULL;
-	DBusMessage *reply = NULL;
+	GVariant *reply = NULL;
 
 	DBG("");
 
@@ -540,8 +534,7 @@ static gboolean __netconfig_wifi_portal_login_timeout(gpointer data)
 
 	if (TRUE == netconfig_get_internet_status()) {
 		if (is_monitor_notifier_registered == TRUE) {
-			netconfig_wifi_state_notifier_unregister(
-							&wifi_state_monitor_notifier);
+			wifi_state_notifier_unregister(&wifi_state_monitor_notifier);
 			is_monitor_notifier_registered = FALSE;
 		}
 
@@ -552,8 +545,7 @@ static gboolean __netconfig_wifi_portal_login_timeout(gpointer data)
 			DBG("Login failed, update ConnMan");
 
 			if (is_monitor_notifier_registered == TRUE) {
-				netconfig_wifi_state_notifier_unregister(
-						&wifi_state_monitor_notifier);
+				wifi_state_notifier_unregister(&wifi_state_monitor_notifier);
 				is_monitor_notifier_registered = FALSE;
 			}
 
@@ -566,13 +558,13 @@ static gboolean __netconfig_wifi_portal_login_timeout(gpointer data)
 						NULL);
 
 				if (reply != NULL)
-					dbus_message_unref(reply);
+					g_variant_unref(reply);
 				else
-					ERR("Failed to forget the AP");
+					ERR("Failed to forget the AP ");
 			}
 		} else {
 			if (NETCONFIG_WIFI_CONNECTED ==
-					netconfig_wifi_state_get_service_state()) {
+					wifi_state_get_service_state()) {
 				/* check Internet availability by sending and receiving data*/
 				netconfig_check_internet_accessibility();
 				/* Returning TRUE itself is enough to restart the timer */
@@ -590,6 +582,7 @@ static gboolean __netconfig_wifi_portal_login_timeout(gpointer data)
 static gboolean __netconfig_display_portal_msg(gpointer data)
 {
 	DBG("");
+	wc_launch_popup(WC_POPUP_TYPE_CAPTIVE_PORTAL);
 
 	netconfig_stop_timer(&portal_msg_timer);
 
@@ -617,40 +610,42 @@ static void __netconfig_wifi_portal_login_timer_start(struct poll_timer_data
 }
 #endif
 
-gboolean netconfig_iface_wifi_request_browser(NetconfigWifi *wifi,
-		gchar *service, gchar *url,
-		DBusGMethodInvocation *context)
+gboolean handle_request_browser(NetConnmanAgent *connman_agent,
+		GDBusMethodInvocation *context, const gchar *service, const gchar *url)
 {
 #if defined TIZEN_CAPTIVE_PORTAL
 	gboolean ret = FALSE;
 	gboolean ignore_portal = FALSE;
 	const char * ssid = NULL;
 
-	g_return_val_if_fail(wifi != NULL, FALSE);
+	g_return_val_if_fail(connman_agent != NULL, FALSE);
 
-	dbus_g_method_return(context);
 	DBG("service[%s] - url[%s]", service, url);
 
 	ssid = netconfig_wifi_get_connected_essid(netconfig_get_default_profile());
 	if (ssid == NULL) {
 		ERR("Connected AP name is NULL!!");
-		return ret;
+		net_connman_agent_complete_request_browser(connman_agent, context);
+		return FALSE;
 	}
 
 	ignore_portal = __check_ignore_portal_list(ssid);
 
-	if (ignore_portal == TRUE)
+	if (ignore_portal == TRUE){
+		net_connman_agent_complete_request_browser(connman_agent, context);
 		return TRUE;
-
+	}
 	/* Register for Wifi state change notifier*/
 	if (is_monitor_notifier_registered == FALSE) {
-		netconfig_wifi_state_notifier_register(&wifi_state_monitor_notifier);
+		wifi_state_notifier_register(&wifi_state_monitor_notifier);
 		is_monitor_notifier_registered = TRUE;
 	}
 
 #if defined TIZEN_WEARABLE
-	if (is_portal_msg_shown)
+	if (is_portal_msg_shown){
+		net_connman_agent_complete_request_browser(connman_agent, context);
 		return TRUE;
+	}
 
 	is_portal_msg_shown = TRUE;
 	netconfig_start_timer_seconds(4, __netconfig_display_portal_msg, NULL, &portal_msg_timer);
@@ -661,14 +656,15 @@ gboolean netconfig_iface_wifi_request_browser(NetconfigWifi *wifi,
 	timer_data.time_elapsed = 0;
 	__netconfig_wifi_portal_login_timer_start(&timer_data);
 
+	net_connman_agent_complete_request_browser(connman_agent, context);
 	return ret;
 #else
-	GError *error;
-	error = g_error_new(DBUS_GERROR,
-			DBUS_GERROR_AUTH_FAILED,
+	GError *error = NULL;
+	error = g_error_new(G_DBUS_ERROR,
+			G_DBUS_ERROR_AUTH_FAILED,
 			CONNMAN_ERROR_INTERFACE ".NotSupported");
 
-	dbus_g_method_return_error(context, error);
+	g_dbus_method_invocation_return_gerror(context, error);
 	g_clear_error(&error);
 
 	return FALSE;

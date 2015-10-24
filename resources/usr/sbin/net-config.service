@@ -18,5 +18,5 @@ if [ ! -f /var/lib/net-config/.provisioned ]; then
 	/bin/touch /var/lib/net-config/.provisioned
 fi
 
-/bin/rm /var/lib/wifi/.pseudonym.info
-/bin/rm /var/lib/wifi/.pseudonym_sim.info
+[ -e /var/lib/wifi/.pseudonym.info ] && /bin/rm /var/lib/wifi/.pseudonym.info
+[ -e /var/lib/wifi/.pseudonym_sim.info ] && /bin/rm /var/lib/wifi/.pseudonym_sim.info

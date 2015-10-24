@@ -21,26 +21,7 @@
 
 #include "netdbus.h"
 #include "neterror.h"
-
-typedef enum {
-	NETCONFIG_NO_ERROR				= 0x00,
-	NETCONFIG_ERROR_INTERNAL 		= 0x01,
-	NETCONFIG_ERROR_NO_SERVICE 		= 0x02,
-	NETCONFIG_ERROR_TRASPORT 		= 0x03,
-	NETCONFIG_ERROR_NO_PROFILE 		= 0x04,
-	NETCONFIG_ERROR_WRONG_PROFILE 	= 0x05,
-	NETCONFIG_ERROR_INPROGRESS		= 0x06,
-	NETCONFIG_ERROR_ALREADYEXISTS	= 0x07,
-	NETCONFIG_ERROR_INVALID_PARAMETER		= 0x08,
-	NETCONFIG_ERROR_PERMISSION_DENIED		= 0x09,
-	NETCONFIG_ERROR_WIFI_DRIVER_FAILURE		= 0x0A,
-	NETCONFIG_ERROR_FAILED_GET_IMSI			= 0x0B,
-	NETCONFIG_ERROR_FAILED_REQ_SIM_AUTH		= 0x0C,
-	NETCONFIG_ERROR_FAILED_REQ_SIM_AUTH_WRONG_PARAM		= 0x0D,
-	NETCONFIG_ERROR_FAILED_GET_SIM_AUTH_WRONG_DATA		= 0x0E,
-	NETCONFIG_ERROR_FAILED_GET_SIM_AUTH_DELAY			= 0x0F,
-	NETCONFIG_ERROR_MAX 								= 0x10,
-} NETCONFIG_ERROR;
+#include "log.h"
 
 #define NETCONFIG_ERROR_INTERFACE NETCONFIG_SERVICE ".Error"
 #define CONNMAN_AGENT_ERROR_INTERFACE "net.connman.Agent.Error"
@@ -65,81 +46,121 @@ GQuark netconfig_connman_agent_error_quark(void)
 	return quark;
 }
 
-void netconfig_error_inprogress(GError **error)
+void netconfig_error_no_profile(GDBusMethodInvocation *context)
 {
-	g_set_error(error, netconfig_error_quark(),
+	ERR("dbus method return error");
+	g_dbus_method_invocation_return_error(context, netconfig_error_quark(),
+			NETCONFIG_ERROR_NO_PROFILE,
+			NETCONFIG_ERROR_INTERFACE ".NoProfile");
+}
+
+void netconfig_error_inprogress(GDBusMethodInvocation *context)
+{
+	ERR("dbus method return error");
+	g_dbus_method_invocation_return_error(context, netconfig_error_quark(),
 			NETCONFIG_ERROR_INPROGRESS,
 			NETCONFIG_ERROR_INTERFACE ".InProgress");
 }
 
-void netconfig_error_already_exists(GError **error)
+void netconfig_error_already_exists(GDBusMethodInvocation *context)
 {
-	g_set_error(error, netconfig_error_quark(),
+	ERR("dbus method return error");
+	g_dbus_method_invocation_return_error(context, netconfig_error_quark(),
 			NETCONFIG_ERROR_ALREADYEXISTS,
 			NETCONFIG_ERROR_INTERFACE ".AlreadyExists");
 }
 
-void netconfig_error_invalid_parameter(GError **error)
+void netconfig_error_invalid_parameter(GDBusMethodInvocation *context)
 {
-	g_set_error(error, netconfig_error_quark(),
+	ERR("dbus method return error");
+	g_dbus_method_invocation_return_error(context, netconfig_error_quark(),
 			NETCONFIG_ERROR_INVALID_PARAMETER,
 			NETCONFIG_ERROR_INTERFACE ".InvalidParameter");
 }
 
-void netconfig_error_permission_denied(GError **error)
+void netconfig_error_permission_denied(GDBusMethodInvocation *context)
 {
-	g_set_error(error, netconfig_error_quark(),
+	ERR("dbus method return error");
+	g_dbus_method_invocation_return_error(context, netconfig_error_quark(),
 			NETCONFIG_ERROR_PERMISSION_DENIED,
 			NETCONFIG_ERROR_INTERFACE ".PermissionDenied");
 }
 
-void netconfig_error_wifi_driver_failed(GError **error)
+void netconfig_error_wifi_driver_failed(GDBusMethodInvocation *context)
 {
-	g_set_error(error, netconfig_error_quark(),
+	ERR("dbus method return error");
+	g_dbus_method_invocation_return_error(context, netconfig_error_quark(),
 			NETCONFIG_ERROR_WIFI_DRIVER_FAILURE,
 			NETCONFIG_ERROR_INTERFACE ".WifiDriverFailed");
 }
 
-void netconfig_error_wifi_direct_failed(GError **error)
+void netconfig_error_wifi_direct_failed(GDBusMethodInvocation *context)
 {
-	g_set_error(error, netconfig_error_quark(),
+	ERR("dbus method return error");
+	g_dbus_method_invocation_return_error(context, netconfig_error_quark(),
 			NETCONFIG_ERROR_WIFI_DRIVER_FAILURE,
 			NETCONFIG_ERROR_INTERFACE ".WifiDirectFailed");
 }
 
-void netconfig_error_fail_get_imsi(GError **error)
+void netconfig_error_fail_get_imsi(GDBusMethodInvocation *context)
 {
-	g_set_error(error, netconfig_error_quark(),
+	ERR("dbus method return error");
+	g_dbus_method_invocation_return_error(context, netconfig_error_quark(),
 			NETCONFIG_ERROR_FAILED_GET_IMSI,
 			NETCONFIG_ERROR_INTERFACE".FailGetSimImsi");
 }
 
-void netconfig_error_fail_req_sim_auth(GError **error)
+void netconfig_error_fail_req_sim_auth(GDBusMethodInvocation *context)
 {
-	g_set_error(error, netconfig_error_quark(),
+	ERR("dbus method return error");
+	g_dbus_method_invocation_return_error(context, netconfig_error_quark(),
 			NETCONFIG_ERROR_FAILED_REQ_SIM_AUTH,
 			NETCONFIG_ERROR_INTERFACE".FailReqSimAuth");
 }
 
-void netconfig_error_fail_req_sim_auth_wrong_param(GError **error)
+void netconfig_error_fail_req_sim_auth_wrong_param(GDBusMethodInvocation *context)
 {
-	g_set_error(error, netconfig_error_quark(),
+	ERR("dbus method return error");
+	g_dbus_method_invocation_return_error(context, netconfig_error_quark(),
 			NETCONFIG_ERROR_FAILED_REQ_SIM_AUTH_WRONG_PARAM,
 			NETCONFIG_ERROR_INTERFACE".FailReqSimAuthWrongParam");
 }
 
-void netconfig_error_fail_get_sim_auth_wrong_data(GError **error)
+void netconfig_error_fail_get_sim_auth_wrong_data(GDBusMethodInvocation *context)
 {
-	g_set_error(error, netconfig_error_quark(),
+	ERR("dbus method return error");
+	g_dbus_method_invocation_return_error(context, netconfig_error_quark(),
 			NETCONFIG_ERROR_FAILED_GET_SIM_AUTH_WRONG_DATA,
 			NETCONFIG_ERROR_INTERFACE".FailGetSimAuthWrongData");
 }
 
-void netconfig_error_fail_get_sim_auth_delay(GError **error)
+void netconfig_error_fail_get_sim_auth_delay(GDBusMethodInvocation *context)
 {
-	g_set_error(error, netconfig_error_quark(),
+	ERR("dbus method return error");
+	g_dbus_method_invocation_return_error(context, netconfig_error_quark(),
 			NETCONFIG_ERROR_FAILED_GET_SIM_AUTH_DELAY,
 			NETCONFIG_ERROR_INTERFACE".FailGetSimAuthDelay");
+}
+
+void netconfig_error_fail_save_congifuration(GDBusMethodInvocation *context)
+{
+	ERR("dbus method return error");
+	g_dbus_method_invocation_return_error(context, netconfig_error_quark(),
+			NETCONFIG_ERROR_INTERNAL,
+			NETCONFIG_ERROR_INTERFACE".FailSaveConfiguration");
+}
+
+#include <glib/gprintf.h>
+void netconfig_error_dbus_method_return(GDBusMethodInvocation *context, netconfig_error_e error, const gchar *message)
+{
+	gchar *msg = NULL;
+
+	ERR("dbus method return error");
+
+	msg = g_strdup_printf("%s.%s", NETCONFIG_ERROR_INTERFACE, message);
+	g_dbus_method_invocation_return_error(context, netconfig_error_quark(), error,"%s", msg);
+
+	g_free(msg);
 }
 
 void netconfig_error_init(void)

@@ -26,100 +26,11 @@
 #include "netsupplicant.h"
 #include "network-statistics.h"
 
-#include "netconfig-iface-network-statistics-glue.h"
-
-#define NETCONFIG_NETWORK_STATISTICS_PATH	"/net/netconfig/network_statistics"
+#include "generated-code.h"
 
 #define NETCONFIG_PROCDEV					"/proc/net/dev"
 
-#define PROP_DEFAULT		FALSE
-#define PROP_DEFAULT_STR	NULL
-
-enum {
-	PROP_O,
-	PROP_NETWORK_STATISTICS_CONN,
-	PROP_NETWORK_STATISTICS_PATH,
-};
-
-struct NetconfigNetworkStatisticsClass {
-	GObjectClass parent;
-};
-
-struct NetconfigNetworkStatistics {
-	GObject parent;
-
-	DBusGConnection *connection;
-	gchar *path;
-};
-
-G_DEFINE_TYPE(NetconfigNetworkStatistics, netconfig_network_statistics, G_TYPE_OBJECT);
-
-static void __netconfig_network_statistics_gobject_get_property(GObject *object,
-		guint prop_id, GValue *value, GParamSpec *pspec)
-{
-	return;
-}
-
-static void __netconfig_network_statistics_gobject_set_property(GObject *object,
-		guint prop_id, const GValue *value, GParamSpec *pspec)
-{
-	NetconfigNetworkStatistics *network_statistics =
-								NETCONFIG_NETWORK_STATISTICS(object);
-
-	switch (prop_id) {
-	case PROP_NETWORK_STATISTICS_CONN:
-	{
-		network_statistics->connection = g_value_get_boxed(value);
-		break;
-	}
-
-	case PROP_NETWORK_STATISTICS_PATH:
-	{
-		if (network_statistics->path)
-			g_free(network_statistics->path);
-
-		network_statistics->path = g_value_dup_string(value);
-		break;
-	}
-
-	default:
-		G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
-	}
-}
-
-static void netconfig_network_statistics_init(
-		NetconfigNetworkStatistics *network_statistics)
-{
-	network_statistics->connection = NULL;
-	network_statistics->path = g_strdup(PROP_DEFAULT_STR);
-}
-
-static void netconfig_network_statistics_class_init(
-		NetconfigNetworkStatisticsClass *klass)
-{
-	GObjectClass *object_class = G_OBJECT_CLASS(klass);
-
-	object_class->get_property =
-			__netconfig_network_statistics_gobject_get_property;
-	object_class->set_property =
-			__netconfig_network_statistics_gobject_set_property;
-
-	/* DBus register */
-	dbus_g_object_type_install_info(NETCONFIG_TYPE_NETWORK_STATISTICS,
-			&dbus_glib_netconfig_iface_network_statistics_object_info);
-
-	/* property */
-	g_object_class_install_property(object_class, PROP_NETWORK_STATISTICS_CONN,
-			g_param_spec_boxed("connection", "CONNECTION", "DBus connection",
-					DBUS_TYPE_G_CONNECTION,
-					G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY));
-
-	g_object_class_install_property(object_class, PROP_NETWORK_STATISTICS_PATH,
-			g_param_spec_string("path", "Path", "Object path",
-					PROP_DEFAULT_STR,
-					G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY));
-}
-
+static Network_statistics *netconfigstatistics = NULL;
 
 gboolean netconfig_wifi_get_bytes_statistics(guint64 *tx, guint64 *rx)
 {
@@ -149,11 +60,10 @@ gboolean netconfig_wifi_get_bytes_statistics(guint64 *tx, guint64 *rx)
 		p_ifname = buf;
 		while (*p_ifname == ' ') p_ifname++;
 		p_entry = strchr(p_ifname, ':');
-		if(p_entry == NULL)
-			goto endline;
-		*p_entry++ = '\0';
+		if (p_entry != NULL) {
+			*p_entry++ = '\0';
 
-		if (g_str_equal(p_ifname, WIFI_IFNAME) != TRUE)
+		if (g_strcmp0(p_ifname, WIFI_IFNAME) != 0)
 			continue;
 
 		/* read interface statistics */
@@ -178,7 +88,9 @@ gboolean netconfig_wifi_get_bytes_statistics(guint64 *tx, guint64 *rx)
 				&lval,		/* tx carrier errors */
 				&lval		/* tx compressed */
 				);
-
+		} else {
+			ERR("No matched Iface name in proc file");
+		}
 		ret = TRUE;
 		break;
 	}
@@ -188,122 +100,141 @@ endline:
 	return ret;
 }
 
-gboolean netconfig_iface_network_statistics_get_wifi_total_tx_bytes(
-		NetconfigNetworkStatistics *network_statistics,
-		guint64 *total_bytes, GError **error)
+static gboolean handle_get_wifi_total_tx_bytes(
+		Network_statistics *object,
+		GDBusMethodInvocation *context)
 {
 	guint64 tx = 0, rx = 0;
 	guint64 tx_bytes = 0;
+	guint64 total_bytes = 0;
 	int val = 0;
 
 	vconf_get_int(VCONFKEY_NETWORK_WIFI_PKT_TOTAL_SNT, &val);
 	tx_bytes = (guint64)val;
 
 	if (netconfig_wifi_get_bytes_statistics(&tx, &rx) == TRUE)
-		*total_bytes = tx + tx_bytes;
+		total_bytes = tx + tx_bytes;
 	else
-		*total_bytes = tx_bytes;
+		total_bytes = tx_bytes;
 
+	network_statistics_complete_get_wifi_total_tx_bytes(object, context, total_bytes);
 	return TRUE;
 }
 
-gboolean netconfig_iface_network_statistics_get_wifi_total_rx_bytes(
-		NetconfigNetworkStatistics *network_statistics,
-		guint64 *total_bytes, GError **error)
+static gboolean handle_get_wifi_total_rx_bytes(
+		Network_statistics *object,
+		GDBusMethodInvocation *context)
 {
 	guint64 tx = 0, rx = 0;
 	guint64 rx_bytes = 0;
+	guint64 total_bytes = 0;
 	int val = 0;
 
 	vconf_get_int(VCONFKEY_NETWORK_WIFI_PKT_TOTAL_RCV, &val);
 	rx_bytes = (guint64)val;
 
 	if (netconfig_wifi_get_bytes_statistics(&tx, &rx) == TRUE)
-		*total_bytes = rx + rx_bytes;
+		total_bytes = rx + rx_bytes;
 	else
-		*total_bytes = rx_bytes;
+		total_bytes = rx_bytes;
 
+	network_statistics_complete_get_wifi_total_rx_bytes(object, context, total_bytes);
 	return TRUE;
 }
 
-gboolean netconfig_iface_network_statistics_get_wifi_last_tx_bytes(
-		NetconfigNetworkStatistics *network_statistics,
-		guint64 *last_bytes, GError **error)
+static gboolean handle_get_wifi_last_tx_bytes(
+		Network_statistics *object,
+		GDBusMethodInvocation *context)
 {
 	guint64 tx = 0, rx = 0;
 	guint64 tx_bytes = 0;
+	guint64 last_bytes = 0;
 	int val = 0;
 
 	vconf_get_int(VCONFKEY_NETWORK_WIFI_PKT_LAST_SNT, &val);
 	tx_bytes = (guint64)val;
 
-	if (netconfig_wifi_state_get_service_state() != NETCONFIG_WIFI_CONNECTED) {
-		*last_bytes = tx_bytes;
+	if (wifi_state_get_service_state() != NETCONFIG_WIFI_CONNECTED) {
+		last_bytes = tx_bytes;
+		network_statistics_complete_get_wifi_last_tx_bytes(object, context, last_bytes);
 		return TRUE;
 	}
 
 	if (netconfig_wifi_get_bytes_statistics(&tx, &rx) == TRUE)
-		*last_bytes = tx < tx_bytes ? 0 : tx - tx_bytes;
+		last_bytes = tx < tx_bytes ? 0 : tx - tx_bytes;
 	else
-		*last_bytes = tx_bytes;
+		last_bytes = tx_bytes;
 
+	network_statistics_complete_get_wifi_last_tx_bytes(object, context, last_bytes);
 	return TRUE;
 }
 
-gboolean netconfig_iface_network_statistics_get_wifi_last_rx_bytes(
-		NetconfigNetworkStatistics *network_statistics,
-		guint64 *last_bytes, GError **error)
+static gboolean handle_get_wifi_last_rx_bytes(
+		Network_statistics *object,
+		GDBusMethodInvocation *context)
 {
 	guint64 tx = 0, rx = 0;
 	guint64 rx_bytes = 0;
+	guint64 last_bytes = 0;
 	int val = 0;
 
 	vconf_get_int(VCONFKEY_NETWORK_WIFI_PKT_LAST_RCV, &val);
 	rx_bytes = (guint64)val;
 
-	if (netconfig_wifi_state_get_service_state() != NETCONFIG_WIFI_CONNECTED) {
-		*last_bytes = rx_bytes;
+	if (wifi_state_get_service_state() != NETCONFIG_WIFI_CONNECTED) {
+		last_bytes = rx_bytes;
+		network_statistics_complete_get_wifi_last_rx_bytes(object, context, last_bytes);
 		return TRUE;
 	}
 
 	if (netconfig_wifi_get_bytes_statistics(&tx, &rx) == TRUE)
-		*last_bytes = rx < rx_bytes ? 0 : rx - rx_bytes;
+		last_bytes = rx < rx_bytes ? 0 : rx - rx_bytes;
 	else
-		*last_bytes = rx_bytes;
+		last_bytes = rx_bytes;
 
+	network_statistics_complete_get_wifi_last_rx_bytes(object, context, last_bytes);
 	return TRUE;
 }
 
-gboolean netconfig_iface_network_statistics_reset_cellular_total_tx_bytes(
-		NetconfigNetworkStatistics *network_statistics, GError **error)
+static gboolean handle_reset_cellular_total_tx_bytes(
+		Network_statistics *object,
+		GDBusMethodInvocation *context)
 {
 	netconfig_set_vconf_int(VCONFKEY_NETWORK_CELLULAR_PKT_TOTAL_SNT, 0);
+	network_statistics_complete_reset_cellular_total_tx_bytes(object, context);
 	return TRUE;
 }
 
-gboolean netconfig_iface_network_statistics_reset_cellular_total_rx_bytes(
-		NetconfigNetworkStatistics *network_statistics, GError **error)
+static gboolean handle_reset_cellular_total_rx_bytes(
+		Network_statistics *object,
+		GDBusMethodInvocation *context)
 {
 	netconfig_set_vconf_int(VCONFKEY_NETWORK_CELLULAR_PKT_TOTAL_RCV, 0);
+	network_statistics_complete_reset_cellular_total_rx_bytes(object, context);
 	return TRUE;
 }
 
-gboolean netconfig_iface_network_statistics_reset_cellular_last_tx_bytes(
-		NetconfigNetworkStatistics *network_statistics, GError **error)
+static gboolean handle_reset_cellular_last_tx_bytes(
+		Network_statistics *object,
+		GDBusMethodInvocation *context)
 {
 	netconfig_set_vconf_int(VCONFKEY_NETWORK_CELLULAR_PKT_LAST_SNT, 0);
+	network_statistics_complete_reset_cellular_last_tx_bytes(object, context);
 	return TRUE;
 }
 
-gboolean netconfig_iface_network_statistics_reset_cellular_last_rx_bytes(
-		NetconfigNetworkStatistics *network_statistics, GError **error)
+static gboolean handle_reset_cellular_last_rx_bytes(
+		Network_statistics *object,
+		GDBusMethodInvocation *context)
 {
 	netconfig_set_vconf_int(VCONFKEY_NETWORK_CELLULAR_PKT_LAST_RCV, 0);
+	network_statistics_complete_reset_cellular_last_rx_bytes(object, context);
 	return TRUE;
 }
 
-gboolean netconfig_iface_network_statistics_reset_wifi_total_tx_bytes(
-		NetconfigNetworkStatistics *network_statistics, GError **error)
+static gboolean handle_reset_wifi_total_tx_bytes(
+		Network_statistics *object,
+		GDBusMethodInvocation *context)
 {
 	guint64 tx = 0, rx = 0;
 
@@ -312,11 +243,14 @@ gboolean netconfig_iface_network_statistics_reset_wifi_total_tx_bytes(
 	else
 		netconfig_set_vconf_int(VCONFKEY_NETWORK_WIFI_PKT_TOTAL_SNT, 0);
 
+	network_statistics_complete_reset_wifi_total_tx_bytes(object, context);
+
 	return TRUE;
 }
 
-gboolean netconfig_iface_network_statistics_reset_wifi_total_rx_bytes(
-		NetconfigNetworkStatistics *network_statistics, GError **error)
+static gboolean handle_reset_wifi_total_rx_bytes(
+		Network_statistics *object,
+		GDBusMethodInvocation *context)
 {
 	guint64 tx = 0, rx = 0;
 
@@ -325,16 +259,19 @@ gboolean netconfig_iface_network_statistics_reset_wifi_total_rx_bytes(
 	else
 		netconfig_set_vconf_int(VCONFKEY_NETWORK_WIFI_PKT_TOTAL_RCV, 0);
 
+	network_statistics_complete_reset_wifi_total_rx_bytes(object, context);
 	return TRUE;
 }
 
-gboolean netconfig_iface_network_statistics_reset_wifi_last_tx_bytes(
-		NetconfigNetworkStatistics *network_statistics, GError **error)
+static gboolean handle_reset_wifi_last_tx_bytes(
+		Network_statistics *object,
+		GDBusMethodInvocation *context)
 {
 	guint64 tx = 0, rx = 0;
 
-	if (netconfig_wifi_state_get_service_state() != NETCONFIG_WIFI_CONNECTED) {
+	if (wifi_state_get_service_state() != NETCONFIG_WIFI_CONNECTED) {
 		netconfig_set_vconf_int(VCONFKEY_NETWORK_WIFI_PKT_LAST_SNT, 0);
+		network_statistics_complete_reset_wifi_last_tx_bytes(object, context);
 		return TRUE;
 	}
 
@@ -343,16 +280,20 @@ gboolean netconfig_iface_network_statistics_reset_wifi_last_tx_bytes(
 	else
 		netconfig_set_vconf_int(VCONFKEY_NETWORK_WIFI_PKT_LAST_SNT, 0);
 
+	network_statistics_complete_reset_wifi_last_tx_bytes(object, context);
+
 	return TRUE;
 }
 
-gboolean netconfig_iface_network_statistics_reset_wifi_last_rx_bytes(
-		NetconfigNetworkStatistics *network_statistics, GError **error)
+static gboolean handle_reset_wifi_last_rx_bytes(
+		Network_statistics *object,
+		GDBusMethodInvocation *context)
 {
 	guint64 tx = 0, rx = 0;
 
-	if (netconfig_wifi_state_get_service_state() != NETCONFIG_WIFI_CONNECTED) {
+	if (wifi_state_get_service_state() != NETCONFIG_WIFI_CONNECTED) {
 		netconfig_set_vconf_int(VCONFKEY_NETWORK_WIFI_PKT_LAST_RCV, 0);
+		network_statistics_complete_reset_wifi_last_rx_bytes(object, context);
 		return TRUE;
 	}
 
@@ -360,6 +301,8 @@ gboolean netconfig_iface_network_statistics_reset_wifi_last_rx_bytes(
 		netconfig_set_vconf_int(VCONFKEY_NETWORK_WIFI_PKT_LAST_RCV, (int)rx);
 	else
 		netconfig_set_vconf_int(VCONFKEY_NETWORK_WIFI_PKT_LAST_RCV, 0);
+
+	network_statistics_complete_reset_wifi_last_rx_bytes(object, context);
 
 	return TRUE;
 }
@@ -387,13 +330,12 @@ void netconfig_wifi_statistics_update_powered_off(void)
 	netconfig_set_vconf_int(VCONFKEY_NETWORK_WIFI_PKT_TOTAL_RCV, (int)total_rx);
 }
 
-static void netconfig_wifi_statistics_update_state(
-		enum netconfig_wifi_service_state state, void *user_data)
+static void wifi_statistics_update_state(wifi_service_state_e state, void *user_data)
 {
 	guint64 tx = 0, rx = 0;
 	guint64 last_tx = 0, last_rx = 0;
 	int val = 0;
-	static enum netconfig_wifi_service_state prev_state = NETCONFIG_WIFI_UNKNOWN;
+	static wifi_service_state_e prev_state = NETCONFIG_WIFI_UNKNOWN;
 
 	if (prev_state == NETCONFIG_WIFI_UNKNOWN) {
 		netconfig_set_vconf_int(VCONFKEY_NETWORK_WIFI_PKT_LAST_SNT, 0);
@@ -429,26 +371,64 @@ static void netconfig_wifi_statistics_update_state(
 	prev_state = state;
 }
 
-static struct netconfig_wifi_state_notifier state_notifier = {
-		.netconfig_wifi_state_changed = netconfig_wifi_statistics_update_state,
+static wifi_state_notifier state_notifier = {
+		.wifi_state_changed = wifi_statistics_update_state,
 		.user_data = NULL,
 };
 
-gpointer netconfig_network_statistics_create_and_init(
-		DBusGConnection *connection)
+void statistics_object_create_and_init(void)
 {
-	GObject *object;
+	DBG("Creating statistics object");
+	GDBusInterfaceSkeleton *interface_statistics = NULL;
+	GDBusConnection *connection = NULL;
+	GDBusObjectManagerServer *server = netdbus_get_statistics_manager();
+	if (server == NULL)
+		return;
 
-	g_return_val_if_fail(connection != NULL, NULL);
+	connection = netdbus_get_connection();
+	g_dbus_object_manager_server_set_connection(server, connection);
 
-	object = g_object_new(NETCONFIG_TYPE_NETWORK_STATISTICS, "connection",
-			connection, "path", NETCONFIG_NETWORK_STATISTICS_PATH, NULL);
+	/*Interface netconfig.network_statistics*/
+	netconfigstatistics = network_statistics_skeleton_new();
 
-	dbus_g_connection_register_g_object(connection,
-							NETCONFIG_NETWORK_STATISTICS_PATH, object);
+	interface_statistics = G_DBUS_INTERFACE_SKELETON(netconfigstatistics);
+	g_signal_connect(netconfigstatistics, "handle-get-wifi-last-rx-bytes",
+				G_CALLBACK(handle_get_wifi_last_rx_bytes), NULL);
+	g_signal_connect(netconfigstatistics, "handle-get-wifi-last-tx-bytes",
+				G_CALLBACK(handle_get_wifi_last_tx_bytes), NULL);
+	g_signal_connect(netconfigstatistics, "handle-get-wifi-total-rx-bytes",
+				G_CALLBACK(handle_get_wifi_total_rx_bytes), NULL);
+	g_signal_connect(netconfigstatistics, "handle-get-wifi-total-tx-bytes",
+				G_CALLBACK(handle_get_wifi_total_tx_bytes), NULL);
+	g_signal_connect(netconfigstatistics, "handle-reset-cellular-last-rx-bytes",
+				G_CALLBACK(handle_reset_cellular_last_rx_bytes), NULL);
+	g_signal_connect(netconfigstatistics, "handle-reset-cellular-last-tx-bytes",
+				G_CALLBACK(handle_reset_cellular_last_tx_bytes), NULL);
+	g_signal_connect(netconfigstatistics, "handle-reset-cellular-total-rx-bytes",
+				G_CALLBACK(handle_reset_cellular_total_rx_bytes), NULL);
+	g_signal_connect(netconfigstatistics, "handle-reset-cellular-total-tx-bytes",
+				G_CALLBACK(handle_reset_cellular_total_tx_bytes), NULL);
+	g_signal_connect(netconfigstatistics, "handle-reset-wifi-last-rx-bytes",
+				G_CALLBACK(handle_reset_wifi_last_rx_bytes), NULL);
+	g_signal_connect(netconfigstatistics, "handle-reset-wifi-last-tx-bytes",
+				G_CALLBACK(handle_reset_wifi_last_tx_bytes), NULL);
+	g_signal_connect(netconfigstatistics, "handle-reset-wifi-total-rx-bytes",
+				G_CALLBACK(handle_reset_wifi_total_rx_bytes), NULL);
+	g_signal_connect(netconfigstatistics, "handle-reset-wifi-total-tx-bytes",
+				G_CALLBACK(handle_reset_wifi_total_tx_bytes), NULL);
 
-	netconfig_wifi_statistics_update_state(NETCONFIG_WIFI_IDLE, NULL);
-	netconfig_wifi_state_notifier_register(&state_notifier);
+	if (!g_dbus_interface_skeleton_export(interface_statistics, connection,
+			NETCONFIG_NETWORK_STATISTICS_PATH, NULL)) {
+		ERR("Export with path failed");
+	}
 
-	return object;
+	wifi_statistics_update_state(NETCONFIG_WIFI_IDLE, NULL);
+	wifi_state_notifier_register(&state_notifier);
+
+	return;
+}
+
+void statistics_object_deinit(void)
+{
+	g_object_unref(netconfigstatistics);
 }

@@ -26,12 +26,15 @@
 #include "netdbus.h"
 #include "emulator.h"
 #include "neterror.h"
-#include "wifi-ccode.h"
 #include "netsupplicant.h"
 #include "wifi-firmware.h"
 #include "network-statistics.h"
+#if defined WLAN_CHECK_POWERSAVE
+#include "wifi-powersave.h"
+#endif
 
 #define WLAN_DRIVER_SCRIPT			"/usr/bin/wlan.sh"
+#define WLAN_IFACE_NAME				"wlan0"
 #define WLAN_P2P_IFACE_NAME			"p2p0"
 
 static int __netconfig_sta_firmware_start(void)
@@ -45,8 +48,9 @@ static int __netconfig_sta_firmware_start(void)
 	if (rv < 0)
 		return -EIO;
 
-	/* Do CCODE initialization here */
-	netconfig_wifi_ccode_init();
+	rv = netconfig_interface_up(WLAN_IFACE_NAME);
+	if (rv != TRUE)
+		return -EIO;
 
 	DBG("Successfully loaded wireless device driver");
 	return 0;
@@ -61,6 +65,10 @@ static int __netconfig_sta_firmware_stop(void)
 
 	/* Update statistics before driver remove */
 	netconfig_wifi_statistics_update_powered_off();
+
+	rv = netconfig_interface_down(WLAN_IFACE_NAME);
+	if (rv != TRUE)
+		return -EIO;
 
 	rv = netconfig_execute_file(path, args, envs);
 	if (rv < 0)
@@ -82,6 +90,16 @@ static int __netconfig_p2p_firmware_start(void)
 	if (rv < 0)
 		return -EIO;
 
+	rv = netconfig_interface_up(WLAN_IFACE_NAME);
+	if (rv != TRUE)
+		return -EIO;
+
+#if defined TIZEN_WLAN_USE_P2P_INTERFACE
+	rv = netconfig_interface_up(WLAN_P2P_IFACE_NAME);
+	if (rv != TRUE)
+		return -EIO;
+#endif
+
 	DBG("Successfully loaded p2p device driver");
 	return 0;
 #else
@@ -96,6 +114,10 @@ static int __netconfig_p2p_firmware_stop(void)
 	const char *path = WLAN_DRIVER_SCRIPT;
 	char *const args[] = { "/usr/bin/wlan.sh", "stop", NULL };
 	char *const envs[] = { NULL };
+
+	rv = netconfig_interface_down(WLAN_IFACE_NAME);
+	if (rv != TRUE)
+		return -EIO;
 
 	rv = netconfig_execute_file(path, args, envs);
 	if (rv < 0)
@@ -120,6 +142,9 @@ static int __netconfig_softap_firmware_start(void)
 	if (rv < 0)
 		return -EIO;
 
+	if (netconfig_interface_up(WLAN_IFACE_NAME) == FALSE)
+		return -EIO;
+
 	DBG("Successfully loaded softap device driver");
 	return 0;
 #else
@@ -135,6 +160,10 @@ static int __netconfig_softap_firmware_stop(void)
 	char *const args[] = { "/usr/bin/wlan.sh", "stop", NULL };
 	char *const envs[] = { NULL };
 
+	rv = netconfig_interface_down(WLAN_IFACE_NAME);
+	if (rv != TRUE)
+		return -EIO;
+
 	rv = netconfig_execute_file(path, args, envs);
 	if (rv < 0)
 		return -EIO;
@@ -148,7 +177,7 @@ static int __netconfig_softap_firmware_stop(void)
 
 static int __netconfig_wifi_firmware_start(enum netconfig_wifi_firmware type)
 {
-	if (netconfig_emulator_is_emulated() == TRUE)
+	if (emulator_is_emulated() == TRUE)
 		return -EIO;
 
 	switch (type) {
@@ -167,7 +196,7 @@ static int __netconfig_wifi_firmware_start(enum netconfig_wifi_firmware type)
 
 static int __netconfig_wifi_firmware_stop(enum netconfig_wifi_firmware type)
 {
-	if (netconfig_emulator_is_emulated() == TRUE)
+	if (emulator_is_emulated() == TRUE)
 		return -EIO;
 
 	switch (type) {
@@ -204,10 +233,17 @@ int netconfig_wifi_firmware(enum netconfig_wifi_firmware type, gboolean enable)
 		if (current_driver == NETCONFIG_WIFI_OFF) {
 			return -EALREADY;
 		} else if (current_driver == alias) {
+#if defined WLAN_CHECK_POWERSAVE
+			if (type == NETCONFIG_WIFI_STA && netconfig_wifi_is_powersave_mode() == TRUE) {
+				netconfig_interface_down(WIFI_IFNAME);
+				return -EALREADY;
+			}
+#endif
 
 #if defined WLAN_CONCURRENT_MODE
+#if defined TIZEN_TELEPHONY_ENABLE
 			vconf_get_bool(VCONFKEY_TELEPHONY_FLIGHT_MODE, &flight_mode);
-
+#endif
 			if (flight_mode == 0 && type == NETCONFIG_WIFI_STA &&
 					netconfig_is_wifi_direct_on() == TRUE) {
 				netconfig_interface_down(WIFI_IFNAME);
@@ -215,9 +251,7 @@ int netconfig_wifi_firmware(enum netconfig_wifi_firmware type, gboolean enable)
 				return -EALREADY;
 			}
 
-			if (type == NETCONFIG_WIFI_P2P &&
-					netconfig_wifi_state_get_technology_state() >
-						NETCONFIG_WIFI_TECH_OFF) {
+			if (type == NETCONFIG_WIFI_P2P && wifi_state_get_technology_state() > NETCONFIG_WIFI_TECH_OFF) {
 				netconfig_interface_down(WLAN_P2P_IFACE_NAME);
 
 				return -EALREADY;
@@ -237,6 +271,13 @@ int netconfig_wifi_firmware(enum netconfig_wifi_firmware type, gboolean enable)
 
 	if (current_driver > NETCONFIG_WIFI_OFF) {
 		if (current_driver == alias) {
+#if defined WLAN_CHECK_POWERSAVE
+			if (type == NETCONFIG_WIFI_STA && netconfig_wifi_is_powersave_mode() == TRUE) {
+				netconfig_interface_up(WIFI_IFNAME);
+
+				return -EALREADY;
+			}
+#endif
 
 #if defined WLAN_CONCURRENT_MODE
 			if (type == NETCONFIG_WIFI_STA)
@@ -261,12 +302,11 @@ int netconfig_wifi_firmware(enum netconfig_wifi_firmware type, gboolean enable)
 	return err;
 }
 
-gboolean netconfig_iface_wifi_start(
-		NetconfigWifi *wifi, gchar *device, GError **error)
+gboolean handle_start(WifiFirmware *firmware, GDBusMethodInvocation *context, const gchar *device)
 {
 	int err;
 
-	g_return_val_if_fail(wifi != NULL, FALSE);
+	g_return_val_if_fail(firmware != NULL, FALSE);
 
 	DBG("Wi-Fi firmware start %s", device != NULL ? device : "null");
 
@@ -279,22 +319,29 @@ gboolean netconfig_iface_wifi_start(
 
 	if (err < 0) {
 		if (err == -EALREADY)
-			netconfig_error_already_exists(error);
+			netconfig_error_already_exists(context);
+		else if (g_strcmp0("softap", device) == 0 && err == -EIO && netconfig_is_wifi_direct_on() == FALSE) {
+			if (netconfig_wifi_firmware(NETCONFIG_WIFI_P2P, FALSE) == 0 && netconfig_wifi_firmware(NETCONFIG_WIFI_SOFTAP, TRUE) == 0) {
+				wifi_firmware_complete_start(firmware, context);
+				return TRUE;
+			} else
+				netconfig_error_wifi_driver_failed(context);
+		}
 		else
-			netconfig_error_wifi_driver_failed(error);
+			netconfig_error_wifi_driver_failed(context);
 
 		return FALSE;
 	}
 
+	wifi_firmware_complete_start(firmware, context);
 	return TRUE;
 }
 
-gboolean netconfig_iface_wifi_stop(
-		NetconfigWifi *wifi, gchar *device, GError **error)
+gboolean handle_stop(WifiFirmware *firmware, GDBusMethodInvocation *context, const gchar *device)
 {
 	int err;
 
-	g_return_val_if_fail(wifi != NULL, FALSE);
+	g_return_val_if_fail(firmware != NULL, FALSE);
 
 	DBG("Wi-Fi firmware stop %s", device != NULL ? device : "null");
 
@@ -307,12 +354,13 @@ gboolean netconfig_iface_wifi_stop(
 
 	if (err < 0) {
 		if (err == -EALREADY)
-			netconfig_error_already_exists(error);
+			netconfig_error_already_exists(context);
 		else
-			netconfig_error_wifi_driver_failed(error);
+			netconfig_error_wifi_driver_failed(context);
 
 		return FALSE;
 	}
 
+	wifi_firmware_complete_stop(firmware, context);
 	return TRUE;
 }

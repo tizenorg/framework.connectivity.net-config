@@ -25,6 +25,7 @@ extern "C" {
 #endif
 
 #include <glib.h>
+#include "wifi.h"
 
 enum netconfig_wifi_firmware {
 	NETCONFIG_WIFI_OFF		= 0x00,
@@ -35,10 +36,8 @@ enum netconfig_wifi_firmware {
 
 int netconfig_wifi_firmware(enum netconfig_wifi_firmware type, gboolean enable);
 
-gboolean netconfig_iface_wifi_start(
-		NetconfigWifi *wifi, gchar *device, GError **error);
-gboolean netconfig_iface_wifi_stop(
-		NetconfigWifi *wifi, gchar *device, GError **error);
+gboolean handle_start(WifiFirmware *firmware, GDBusMethodInvocation *context, const gchar *device);
+gboolean handle_stop(WifiFirmware *firmware, GDBusMethodInvocation *context, const gchar *device);
 
 #ifdef __cplusplus
 }

@@ -1,0 +1,6 @@
+# Udev Rules  for WiFi Chip attach/detach Events
+
+
+ACTION=="add",          SUBSYSTEM=="net",       KERNEL=="wlan0",        RUN+="/usr/bin/vconftool set -t int memory/wifi/device/status_uevent 1 -f"
+ACTION=="remove",       SUBSYSTEM=="net",       KERNEL=="wlan0",        RUN+="/usr/bin/vconftool set -t int memory/wifi/device/status_uevent 0 -f"
+

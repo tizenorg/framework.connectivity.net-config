@@ -25,38 +25,19 @@ extern "C" {
 #endif
 
 #include <glib.h>
+#include <gio/gio.h>
 #include <glib-object.h>
-#include <dbus/dbus-glib.h>
+
+#include "generated-code.h"
 
 #define WIFI_STORAGEDIR			"/var/lib/wifi"
 #define WIFI_CERT_STORAGEDIR	"/var/lib/wifi/cert"
 #define CONNMAN_STORAGEDIR		"/var/lib/connman"
 
-G_BEGIN_DECLS
+void wifi_object_create_and_init(void);
+void wifi_object_deinit(void);
 
-typedef struct NetconfigWifi NetconfigWifi;
-typedef struct NetconfigWifiClass NetconfigWifiClass;
-
-#define NETCONFIG_TYPE_WIFI	( netconfig_wifi_get_type() )
-#define NETCONFIG_WIFI(obj) \
-	( G_TYPE_CHECK_INSTANCE_CAST((obj), NETCONFIG_TYPE_WIFI, NetconfigWifi) )
-#define NETCONFIG_IS_WIFI(obj) \
-	( G_TYPE_CHECK_INSTANCE_TYPE((obj), NETCONFIG_TYPE_WIFI) )
-
-#define NETCONFIG_WIFI_CLASS(klass) \
-	( G_TYPE_CHECK_CLASS_CAST((klass), NETCONFIG_TYPE_WIFI, \
-			NetconfigWifiClass) )
-#define NETCONFIG_IS_WIFI_CLASS(klass) \
-	( G_TYPE_CHECK_CLASS_TYPE((klass), NETCONFIG_TYPE_WIFI) )
-#define NETCONFIG_WIFI_GET_CLASS(obj) \
-	( G_TYPE_INSTANCE_GET_CLASS((obj), NETCONFIG_TYPE_WIFI, \
-			NetconfigWifiClass) )
-
-GType netconfig_wifi_get_type(void);
-
-gpointer netconfig_wifi_create_and_init(DBusGConnection *connection);
-
-G_END_DECLS
+Wifi *get_wifi_object(void);
 
 #ifdef __cplusplus
 }

@@ -26,16 +26,11 @@ extern "C" {
 
 #include "wifi.h"
 
-gboolean netconfig_iface_wifi_get_sim_imsi(NetconfigWifi *wifi,
-		DBusGMethodInvocation *context);
-gboolean netconfig_iface_wifi_req_sim_auth(NetconfigWifi *wifi,
-		GArray *rand_data, gboolean *result, GError **error);
-gboolean netconfig_iface_wifi_req_aka_auth(NetconfigWifi *wifi,
-		GArray *rand_data, GArray *autn_data, gboolean *result, GError **error);
-gboolean netconfig_iface_wifi_get_sim_auth(NetconfigWifi *wifi,
-		DBusGMethodInvocation *context);
-gboolean netconfig_iface_wifi_get_aka_auth(NetconfigWifi *wifi,
-		DBusGMethodInvocation *context);
+gboolean handle_get_sim_imsi(Wifi *wifi, GDBusMethodInvocation *context);
+gboolean handle_req_sim_auth(Wifi *wifi, GDBusMethodInvocation *context, GVariant *rand_data);
+gboolean handle_req_aka_auth(Wifi *wifi, GDBusMethodInvocation *context, GVariant *rand_data, GVariant *autn_data);
+gboolean handle_get_sim_auth(Wifi *wifi, GDBusMethodInvocation *context);
+gboolean handle_get_aka_auth(Wifi *wifi, GDBusMethodInvocation *context);
 
 #ifdef __cplusplus
 }

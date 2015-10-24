@@ -38,7 +38,11 @@
 
 #define VCONFKEY_WIFI_SNR_MIN	-89
 
-#define NETCONFIG_WIFI_INDICATOR_INTERVAL	1
+#if !defined TIZEN_WEARABLE
+#define WIFI_INDICATOR_INTERVAL	1
+#else
+#define WIFI_INDICATOR_INTERVAL	10
+#endif
 
 #if defined TIZEN_WEARABLE
 #define NETCONFIG_WIFI_DATA_ACTIVITY_BOOSTER_LEVEL1	(19200 * 1024)
@@ -88,25 +92,25 @@ static int __netconfig_wifi_update_and_get_rssi(void)
 		p_ifname = buf;
 		while (*p_ifname == ' ') p_ifname++;
 		p_entry = strchr(p_ifname, ':');
-		if(p_entry == NULL)
+		if (p_entry == NULL)
 			goto endline;
 		*p_entry++ = '\0';
 
-		if (g_str_equal(p_ifname, WIFI_IFNAME) != TRUE)
+		if (g_strcmp0(p_ifname, WIFI_IFNAME) != 0)
 			continue;
 
 		/* read wireless status */
 		p_entry = strtok(p_entry, " .");	// status			"%x"
-		if(p_entry != NULL)
+		if (p_entry != NULL)
 			sscanf(p_entry, "%x", &status);
 		p_entry = strtok(NULL, " .");		// Quality link		"%d"
-		if(p_entry != NULL)
+		if (p_entry != NULL)
 			sscanf(p_entry, "%d", &link);
 		p_entry = strtok(NULL, " .");		// Quality level	"%d"
-		if(p_entry != NULL)
+		if (p_entry != NULL)
 			sscanf(p_entry, "%d", &rssi_dbm);
 		p_entry = strtok(NULL, " .");		// Quality noise	"%d"
-		if(p_entry != NULL)
+		if (p_entry != NULL)
 			sscanf(p_entry, "%d", &noise);
 
 		/* No need to read */
@@ -171,14 +175,14 @@ static void __netconfig_wifi_set_rssi_level(const int snr_level)
 static void __netconfig_wifi_data_activity_booster(int level)
 {
 	gboolean reply = FALSE;
-	char level1[] = "int32:1";
-	char level2[] = "int32:2";
-	char level3[] = "int32:3";
+	GVariant *params = NULL;
+	int level1 = 1;
+	int level2 = 2;
+	int level3 = 3;
 
-	char lock[] = "int32:2000";
-	char unlock[] = "int32:0";
+	int lock = 2000;
+	int unlock = 0;
 
-	char *param_array[] = { NULL, NULL, NULL };
 	static int old_level = 0;
 
 	if (level < 0)
@@ -188,26 +192,25 @@ static void __netconfig_wifi_data_activity_booster(int level)
 		/* enable booster */
 		switch(level) {
 		case 1:
-			param_array[0] = level1;
+			params = g_variant_new("(ii)", level1, lock);
 			break;
 		case 2:
-			param_array[0] = level2;
+			params = g_variant_new("(ii)", level2, lock);
 			break;
 		case 3:
-			param_array[0] = level3;
+			params = g_variant_new("(ii)", level3, lock);
 			break;
 		default:
 			ERR("Invalid level");
 			return;
 		}
-		param_array[1] = lock;
 
 		reply = netconfig_invoke_dbus_method_nonblock(
 				"org.tizen.system.deviced",
 				"/Org/Tizen/System/DeviceD/PmQos",
 				"org.tizen.system.deviced.PmQos",
 				"WifiThroughput",
-				param_array,
+				params,
 				NULL);
 		if (reply != TRUE)
 			return;
@@ -219,26 +222,25 @@ static void __netconfig_wifi_data_activity_booster(int level)
 
 	switch(old_level) {
 	case 1:
-		param_array[0] = level1;
+		params = g_variant_new("(ii)", level1, unlock);
 		break;
 	case 2:
-		param_array[0] = level2;
+		params = g_variant_new("(ii)", level2, unlock);
 		break;
 	case 3:
-		param_array[0] = level3;
+		params = g_variant_new("(ii)", level3, unlock);
 		break;
 	default:
 		ERR("Invalid level");
 		return;
 	}
-	param_array[1] = unlock;
 
 	reply = netconfig_invoke_dbus_method_nonblock(
 			"org.tizen.system.deviced",
 			"/Org/Tizen/System/DeviceD/PmQos",
 			"org.tizen.system.deviced.PmQos",
 			"WifiThroughput",
-			param_array,
+			params,
 			NULL);
 	if (reply != TRUE)
 		return;
@@ -274,8 +276,7 @@ static void __netconfig_wifi_update_indicator(void)
 		}
 
 		if (transfer_state != last_transfer_state) {
-			netconfig_set_vconf_int(VCONFKEY_WIFI_TRANSFER_STATE,
-										transfer_state);
+			netconfig_set_vconf_int(VCONFKEY_WIFI_TRANSFER_STATE, transfer_state);
 			last_transfer_state = transfer_state;
 		}
 
@@ -312,13 +313,13 @@ static void __netconfig_wifi_update_indicator(void)
 	}
 }
 
-static gboolean __netconfig_wifi_indicator_monitor(gpointer data)
+static gboolean __wifi_indicator_monitor(gpointer data)
 {
 	int rssi_dbm = 0;
 	int snr_level = 0;
 	int pm_state = VCONFKEY_PM_STATE_NORMAL;
 
-	if (netconfig_wifi_state_get_service_state() != NETCONFIG_WIFI_CONNECTED)
+	if (wifi_state_get_service_state() != NETCONFIG_WIFI_CONNECTED)
 		return FALSE;
 
 	/* In case of LCD off, we don't need to update Wi-Fi indicator */
@@ -327,7 +328,7 @@ static gboolean __netconfig_wifi_indicator_monitor(gpointer data)
 		return TRUE;
 
 	rssi_dbm = __netconfig_wifi_update_and_get_rssi();
-	INFO("%d dbm", rssi_dbm);
+	//INFO("%d dbm", rssi_dbm);
 	snr_level = netconfig_wifi_rssi_level(rssi_dbm);
 	__netconfig_wifi_set_rssi_level(snr_level);
 
@@ -341,12 +342,7 @@ void netconfig_wifi_indicator_start(void)
 	INFO("Start Wi-Fi indicator");
 
 	netconfig_set_vconf_int(VCONFKEY_WIFI_STRENGTH, VCONFKEY_WIFI_STRENGTH_MAX);
-
-	netconfig_start_timer_seconds(
-			NETCONFIG_WIFI_INDICATOR_INTERVAL,
-			__netconfig_wifi_indicator_monitor,
-			NULL,
-			&netconfig_wifi_indicator_timer);
+	netconfig_start_timer_seconds(WIFI_INDICATOR_INTERVAL, __wifi_indicator_monitor, NULL, &netconfig_wifi_indicator_timer);
 }
 
 void netconfig_wifi_indicator_stop(void)

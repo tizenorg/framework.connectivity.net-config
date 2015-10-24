@@ -26,25 +26,23 @@ extern "C" {
 
 #include "wifi.h"
 
-gboolean netconfig_agent_register(void);
-gboolean netconfig_agent_unregister(void);
+gboolean connman_register_agent(void);
+gboolean connman_unregister_agent(void);
 
 gboolean netconfig_wifi_set_agent_field_for_eap_network(
 		const char *name, const char *identity, const char *passphrase);
 
-gboolean netconfig_iface_wifi_set_field(NetconfigWifi *wifi,
-		gchar *service, GHashTable *fields,
-		DBusGMethodInvocation *context);
-gboolean netconfig_iface_wifi_request_input(NetconfigWifi *wifi,
-		gchar *service, GHashTable *fields,
-		DBusGMethodInvocation *context);
-gboolean netconfig_iface_wifi_report_error(NetconfigWifi *wifi,
-		gchar *service, gchar *error,
-		DBusGMethodInvocation *context);
+gboolean handle_set_field(NetConnmanAgent *connman_agent,
+		GDBusMethodInvocation *context, const gchar *service, GVariant *fields);
+gboolean handle_request_input(NetConnmanAgent *connman_agent,
+		GDBusMethodInvocation *context, const gchar *service, GVariant *fields);
+gboolean handle_report_error(NetConnmanAgent *connman_agent,
+		GDBusMethodInvocation *context,
+		const gchar *service, const gchar *error);
 
-gboolean netconfig_iface_wifi_request_browser(NetconfigWifi *wifi,
-		gchar *service, gchar *url,
-		DBusGMethodInvocation *context);
+gboolean handle_request_browser(NetConnmanAgent *connman_agent,
+		GDBusMethodInvocation *context,
+		const gchar *service, const gchar *url);
 
 #ifdef __cplusplus
 }

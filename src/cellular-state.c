@@ -21,60 +21,54 @@
 #include "log.h"
 #include "cellular-state.h"
 
-static enum netconfig_cellular_service_state
-	cellular_service_state = NETCONFIG_CELLULAR_UNKNOWN;
+static cellular_service_state_e cellular_service_state = NETCONFIG_CELLULAR_UNKNOWN;
 
 static GSList *notifier_list = NULL;
 
-static void __netconfig_cellular_state_changed(
-		enum netconfig_cellular_service_state state)
+static void _cellular_state_changed(cellular_service_state_e state)
 {
 	GSList *list;
 
 	for (list = notifier_list; list; list = list->next) {
-		struct netconfig_cellular_state_notifier *notifier = list->data;
+		cellular_state_notifier *notifier = list->data;
 
-		if (notifier->netconfig_cellular_state_changed != NULL)
-			notifier->netconfig_cellular_state_changed(state, notifier->user_data);
+		if (notifier->cellular_state_changed != NULL)
+			notifier->cellular_state_changed(state, notifier->user_data);
 	}
 }
 
-void netconfig_cellular_state_set_service_state(
-		enum netconfig_cellular_service_state new_state)
+void cellular_state_set_service_state(cellular_service_state_e new_state)
 {
-	enum netconfig_cellular_service_state old_state = cellular_service_state;
+	cellular_service_state_e old_state = cellular_service_state;
 
 	if (old_state == new_state)
 		return;
 
 	cellular_service_state = new_state;
 	DBG("Cellular state %d ==> %d", old_state, new_state);
-	__netconfig_cellular_state_changed(new_state);
+	_cellular_state_changed(new_state);
 }
 
-enum netconfig_cellular_service_state
-netconfig_cellular_state_get_service_state(void)
+cellular_service_state_e cellular_state_get_service_state(void)
 {
 	return cellular_service_state;
 }
 
-void netconfig_cellular_state_notifier_cleanup(void)
-{
-	g_slist_free_full(notifier_list, NULL);
-}
-
-void netconfig_cellular_state_notifier_register(
-		struct netconfig_cellular_state_notifier *notifier)
+void cellular_state_notifier_register(cellular_state_notifier *notifier)
 {
 	DBG("register notifier");
 
 	notifier_list = g_slist_append(notifier_list, notifier);
 }
 
-void netconfig_cellular_state_notifier_unregister(
-		struct netconfig_cellular_state_notifier *notifier)
+void cellular_state_notifier_unregister(cellular_state_notifier *notifier)
 {
 	DBG("un-register notifier");
 
 	notifier_list = g_slist_remove_all(notifier_list, notifier);
+}
+
+void cellular_state_notifier_cleanup(void)
+{
+	g_slist_free_full(notifier_list, NULL);
 }

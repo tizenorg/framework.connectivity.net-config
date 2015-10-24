@@ -26,10 +26,8 @@ extern "C" {
 
 #include "wifi.h"
 
-gboolean netconfig_iface_wifi_get_passpoint(NetconfigWifi *wifi,
-		int *result, GError **error);
-gboolean netconfig_iface_wifi_set_passpoint(NetconfigWifi *wifi,
-		int enable, GError **error);
+gboolean handle_get_passpoint(Wifi *wifi, GDBusMethodInvocation *context);
+gboolean handle_set_passpoint(Wifi *wifi, GDBusMethodInvocation *context, gint enable);
 
 #ifdef __cplusplus
 }

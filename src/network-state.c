@@ -27,6 +27,8 @@
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #include <sys/ioctl.h>
+#include <ITapiSim.h>
+#include <TapiUtility.h>
 
 #include "log.h"
 #include "util.h"
@@ -36,26 +38,30 @@
 #include "wifi-state.h"
 #include "wifi-power.h"
 #include "network-state.h"
+#include "network-monitor.h"
 #include "netsupplicant.h"
+#include "wifi-tel-intf.h"
+#include "clatd-handler.h"
 
+#include "generated-code.h"
 /* Define TCP buffer sizes for various networks */
 /* ReadMin, ReadInitial, ReadMax */ /* WriteMin, WriteInitial, WriteMax */
 #define NET_TCP_BUFFERSIZE_DEFAULT_READ		"4096 87380 704512"
 #define NET_TCP_BUFFERSIZE_DEFAULT_WRITE	"4096 16384 110208"
 #define NET_TCP_BUFFERSIZE_WIFI_READ		"524288 1048576 2560000"
 #define NET_TCP_BUFFERSIZE_WIFI_WRITE		"524288 1048576 2560000"
-#define NET_TCP_BUFFERSIZE_LTE_READ			"524288 1048576 2560000"
+#define NET_TCP_BUFFERSIZE_LTE_READ		"524288 1048576 2560000"
 #define NET_TCP_BUFFERSIZE_LTE_WRITE		"524288 1048576 2560000"
 #define NET_TCP_BUFFERSIZE_UMTS_READ		"4094 87380 704512"
 #define NET_TCP_BUFFERSIZE_UMTS_WRITE		"4096 16384 110208"
 #define NET_TCP_BUFFERSIZE_HSPA_READ		"4092 87380 704512"
 #define NET_TCP_BUFFERSIZE_HSPA_WRITE		"4096 16384 262144"
 #define NET_TCP_BUFFERSIZE_HSDPA_READ		"4092 87380 704512"
-#define NET_TCP_BUFFERSIZE_HSDPA_WRITE		"4096 16384 110208"
+#define NET_TCP_BUFFERSIZE_HSDPA_WRITE		"4096 16384 262144"
 #define NET_TCP_BUFFERSIZE_HSUPA_READ		"4092 87380 704512"
 #define NET_TCP_BUFFERSIZE_HSUPA_WRITE		"4096 16384 262144"
-#define NET_TCP_BUFFERSIZE_HSPAP_READ		"4092 87380 704512"
-#define NET_TCP_BUFFERSIZE_HSPAP_WRITE		"4096 16384 262144"
+#define NET_TCP_BUFFERSIZE_HSPAP_READ		"4092 87380 1220608"
+#define NET_TCP_BUFFERSIZE_HSPAP_WRITE		"4096 16384 1220608"
 #define NET_TCP_BUFFERSIZE_EDGE_READ		"4093 26280 35040"
 #define NET_TCP_BUFFERSIZE_EDGE_WRITE		"4096 16384 35040"
 #define NET_TCP_BUFFERSIZE_GPRS_READ		"4096 30000 30000"
@@ -74,149 +80,43 @@
 
 #define ROUTE_EXEC_PATH						"/sbin/route"
 
-
-#define NETCONFIG_NETWORK_STATE_PATH	"/net/netconfig/network"
-
-#define PROP_DEFAULT		FALSE
-#define PROP_DEFAULT_STR	NULL
-
-gboolean netconfig_iface_network_state_add_route(
-		NetconfigNetworkState *master,
-		gchar *ip_addr, gchar *netmask,
-		gchar *interface, gchar *gateway, gint32 address_family, gboolean *result, GError **error);
-
-gboolean netconfig_iface_network_state_remove_route(
-		NetconfigNetworkState *master,
-		gchar *ip_addr, gchar *netmask,
-		gchar *interface, gchar *gateway, gint32 address_family, gboolean *result, GError **error);
-
-gboolean netconfig_iface_network_state_check_get_privilege();
-
-gboolean netconfig_iface_network_state_check_profile_privilege();
-
-#include "netconfig-iface-network-state-glue.h"
-
-enum {
-	PROP_O,
-	PROP_NETWORK_STATE_CONN,
-	PROP_NETWORK_STATE_PATH,
-};
-
-struct NetconfigNetworkStateClass {
-	GObjectClass parent;
-};
-
-struct NetconfigNetworkState {
-	GObject parent;
-
-	DBusGConnection *connection;
-	gchar *path;
-};
-
-G_DEFINE_TYPE(NetconfigNetworkState, netconfig_network_state, G_TYPE_OBJECT);
-
-static void __netconfig_network_state_gobject_get_property(GObject *object,
-		guint prop_id, GValue *value, GParamSpec *pspec)
-{
-	return;
-}
-
-static void __netconfig_network_state_gobject_set_property(GObject *object,
-		guint prop_id, const GValue *value, GParamSpec *pspec)
-{
-	NetconfigNetworkState *network_state = NETCONFIG_NETWORK_STATE(object);
-
-	switch (prop_id) {
-	case PROP_NETWORK_STATE_CONN:
-	{
-		network_state->connection = g_value_get_boxed(value);
-		break;
-	}
-
-	case PROP_NETWORK_STATE_PATH:
-	{
-		if (network_state->path)
-			g_free(network_state->path);
-
-		network_state->path = g_value_dup_string(value);
-		break;
-	}
-
-	default:
-		G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
-	}
-}
-
-static void netconfig_network_state_init(NetconfigNetworkState *network_state)
-{
-	network_state->connection = NULL;
-	network_state->path = g_strdup(PROP_DEFAULT_STR);
-}
-
-static void netconfig_network_state_class_init(NetconfigNetworkStateClass *klass)
-{
-	GObjectClass *object_class = G_OBJECT_CLASS(klass);
-
-	object_class->get_property = __netconfig_network_state_gobject_get_property;
-	object_class->set_property = __netconfig_network_state_gobject_set_property;
-
-	/* DBus register */
-	dbus_g_object_type_install_info(NETCONFIG_TYPE_NETWORK_STATE,
-			&dbus_glib_netconfig_iface_network_state_object_info);
-
-	/* property */
-	g_object_class_install_property(object_class, PROP_NETWORK_STATE_CONN,
-			g_param_spec_boxed("connection", "CONNECTION", "DBus connection",
-					DBUS_TYPE_G_CONNECTION,
-					G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY));
-
-	g_object_class_install_property(object_class, PROP_NETWORK_STATE_PATH,
-			g_param_spec_string("path", "Path", "Object path",
-					PROP_DEFAULT_STR,
-					G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY));
-}
-
+static Network *netconfigstate = NULL;
 
 struct netconfig_default_connection {
 	char *profile;
 	char *ifname;
 	char *ipaddress;
+	char *ipaddress6;
 	char *proxy;
 	char *essid;
+	unsigned int freq;
 };
 
 static struct netconfig_default_connection
 				netconfig_default_connection_info = { NULL, };
 
-static gboolean __netconfig_is_connected(DBusMessageIter *array)
+gboolean netconfig_iface_network_state_ethernet_cable_state(gint32 *state);
+
+static gboolean __netconfig_is_connected(GVariantIter *array)
 {
 	gboolean is_connected = FALSE;
+	GVariant *variant = NULL;
+	gchar *key = NULL;
+	const gchar *value = NULL;
 
-	while (dbus_message_iter_get_arg_type(array) == DBUS_TYPE_DICT_ENTRY) {
-		DBusMessageIter entry, variant;
-		const char *key = NULL;
-		const char *value = NULL;
-
-		dbus_message_iter_recurse(array, &entry);
-		dbus_message_iter_get_basic(&entry, &key);
-
-		if (g_str_equal(key, "State") != TRUE) {
-			dbus_message_iter_next(array);
+	while (g_variant_iter_loop(array, "{sv}", &key, &variant)) {
+		if (g_strcmp0(key, "State") != 0) {
 			continue;
 		}
 
-		dbus_message_iter_next(&entry);
-		dbus_message_iter_recurse(&entry, &variant);
-
-		if (dbus_message_iter_get_arg_type(&variant) ==
-				DBUS_TYPE_STRING) {
-			dbus_message_iter_get_basic(&variant, &value);
-
-			if (g_str_equal(value, "ready") == TRUE ||
-					g_str_equal(value, "online") == TRUE)
+		if (g_variant_is_of_type(variant, G_VARIANT_TYPE_STRING)) {
+			value = g_variant_get_string(variant, NULL);
+			if (g_strcmp0(value, "ready") == 0 || g_strcmp0(value, "online") == 0)
 				is_connected = TRUE;
 		}
 
+		g_free(key);
+		g_variant_unref(variant);
 		break;
 	}
 
@@ -225,9 +125,11 @@ static gboolean __netconfig_is_connected(DBusMessageIter *array)
 
 static char *__netconfig_get_default_profile(void)
 {
-	DBusMessage *message = NULL;
-	DBusMessageIter iter, dict;
-	char *default_profile = NULL;
+	GVariant *message = NULL;
+	GVariantIter *iter;
+	GVariantIter *next;
+	gchar *default_profile = NULL;
+	gchar *object_path;
 
 	message = netconfig_invoke_dbus_method(CONNMAN_SERVICE,
 			CONNMAN_MANAGER_PATH, CONNMAN_MANAGER_INTERFACE,
@@ -237,209 +139,134 @@ static char *__netconfig_get_default_profile(void)
 		return NULL;
 	}
 
-	dbus_message_iter_init(message, &iter);
-	dbus_message_iter_recurse(&iter, &dict);
-
-	while (dbus_message_iter_get_arg_type(&dict) == DBUS_TYPE_STRUCT) {
-		DBusMessageIter entry;
-		DBusMessageIter array;
-		const char *object_path = NULL;
-
-		dbus_message_iter_recurse(&dict, &entry);
-		dbus_message_iter_get_basic(&entry, &object_path);
-
+	g_variant_get(message, "(a(oa{sv}))", &iter);
+	while (g_variant_iter_loop(iter, "(oa{sv})", &object_path, &next)) {
 		if (object_path == NULL) {
-			dbus_message_iter_next(&dict);
 			continue;
 		}
 
-		dbus_message_iter_next(&entry);
-		dbus_message_iter_recurse(&entry, &array);
-
-		if (__netconfig_is_connected(&array) == TRUE) {
-			default_profile = g_strdup(object_path);
-			break;
+		if(netconfig_is_cellular_profile(object_path) && !netconfig_is_cellular_internet_profile(object_path)){
+			continue;
 		}
 
-		dbus_message_iter_next(&dict);
+		if (__netconfig_is_connected(next) == TRUE) {
+			default_profile = g_strdup(object_path);
+			g_free(object_path);
+			g_variant_iter_free(next);
+			break;
+		}
 	}
-
-	dbus_message_unref(message);
+	g_variant_iter_free(iter);
+	g_variant_unref(message);
 
 	return default_profile;
 }
 
 static void __netconfig_get_default_connection_info(const char *profile)
 {
-	DBusMessage *message = NULL;
-	DBusMessageIter iter, array;
+	GVariant *message = NULL, *variant = NULL, *variant2 = NULL;
+	GVariantIter *iter = NULL, *iter1 = NULL;
+	GVariant *next = NULL;
+	gchar *key = NULL;
+	gchar *key1 = NULL;
+	gchar *key2 = NULL;
 
 	message = netconfig_invoke_dbus_method(CONNMAN_SERVICE, profile,
 			CONNMAN_SERVICE_INTERFACE, "GetProperties", NULL);
 	if (message == NULL) {
 		ERR("Failed to get service properties");
-		return;
-	}
-
-	if (dbus_message_get_type(message) == DBUS_MESSAGE_TYPE_ERROR) {
-		const char *ptr = dbus_message_get_error_name(message);
-		ERR("Error!!! Error message received [%s]", ptr);
 		goto done;
 	}
 
-	dbus_message_iter_init(message, &iter);
-	dbus_message_iter_recurse(&iter, &array);
-
-	while (dbus_message_iter_get_arg_type(&array) == DBUS_TYPE_DICT_ENTRY) {
-		DBusMessageIter entry, variant, string, iter1, iter2, iter3;
-		const char *key = NULL, *value = NULL;
-
-		dbus_message_iter_recurse(&array, &entry);
-		dbus_message_iter_get_basic(&entry, &key);
-
-		if (g_str_equal(key, "Name") == TRUE &&
+	g_variant_get(message, "(a{sv})", &iter);
+	while (g_variant_iter_loop(iter, "{sv}", &key, &next)) {
+		const gchar *value = NULL;
+		guint16 freq = 0;
+		if (g_strcmp0(key, "Name") == 0 &&
 				netconfig_is_wifi_profile(profile) == TRUE) {
-			dbus_message_iter_next(&entry);
-			dbus_message_iter_recurse(&entry, &string);
+			if (g_variant_is_of_type(next, G_VARIANT_TYPE_STRING)) {
+				value = g_variant_get_string(next, NULL);
 
-			if (dbus_message_iter_get_arg_type(&string) == DBUS_TYPE_STRING) {
-				dbus_message_iter_get_basic(&string, &value);
-
-				if(netconfig_default_connection_info.essid != NULL) {
-					g_free(netconfig_default_connection_info.essid);
-					netconfig_default_connection_info.essid = NULL;
-				}
 				netconfig_default_connection_info.essid = g_strdup(value);
 			}
-		} else if (g_str_equal(key, "Ethernet") == TRUE) {
-			dbus_message_iter_next(&entry);
-			dbus_message_iter_recurse(&entry, &variant);
-			dbus_message_iter_recurse(&variant, &iter1);
-
-			while (dbus_message_iter_get_arg_type(&iter1)
-					== DBUS_TYPE_DICT_ENTRY) {
-				dbus_message_iter_recurse(&iter1, &iter2);
-				dbus_message_iter_get_basic(&iter2, &key);
-
-				if (g_str_equal(key, "Interface") == TRUE) {
-					dbus_message_iter_next(&iter2);
-					dbus_message_iter_recurse(&iter2, &iter3);
-					dbus_message_iter_get_basic(&iter3, &value);
-
-					if(netconfig_default_connection_info.ifname != NULL) {
-						g_free(netconfig_default_connection_info.ifname);
-						netconfig_default_connection_info.ifname = NULL;
-					}
+		} else if (g_strcmp0(key, "Ethernet") == 0) {
+			g_variant_get(next, "a{sv}", &iter1);
+			while (g_variant_iter_loop(iter1, "{sv}", &key1, &variant)) {
+				if (g_strcmp0(key1, "Interface") == 0) {
+					value = g_variant_get_string(variant, NULL);
 					netconfig_default_connection_info.ifname = g_strdup(value);
 				}
-
-				dbus_message_iter_next(&iter1);
 			}
-		} else if (g_str_equal(key, "IPv4") == TRUE) {
-			dbus_message_iter_next(&entry);
-			dbus_message_iter_recurse(&entry, &variant);
-			dbus_message_iter_recurse(&variant, &iter1);
+		} else if (g_strcmp0(key, "IPv4") == 0) {
+			g_variant_get(next, "a{sv}", &iter1);
+			while (g_variant_iter_loop(iter1, "{sv}", &key1, &variant)) {
+				if (g_strcmp0(key1, "Address") == 0) {
+					value = g_variant_get_string(variant, NULL);
+					netconfig_default_connection_info.ipaddress = g_strdup(value);
+				}
+			}
+		} else if (g_strcmp0(key, "IPv6") == 0) {
+			g_variant_get(next, "a{sv}", &iter1);
+			while (g_variant_iter_loop(iter1, "{sv}", &key1, &variant)) {
+				if (g_strcmp0(key1, "Address") == 0) {
+					value = g_variant_get_string(variant, NULL);
+					netconfig_default_connection_info.ipaddress6 = g_strdup(value);
+				}
+			}
+		} else if (g_strcmp0(key, "Proxy") == 0) {
+			g_variant_get(next, "a{sv}", &iter1);
+			while (g_variant_iter_loop(iter1, "{sv}", &key2, &variant2)) {
+				GVariantIter *iter_sub = NULL;
 
-			while (dbus_message_iter_get_arg_type(&iter1)
-					== DBUS_TYPE_DICT_ENTRY) {
-				dbus_message_iter_recurse(&iter1, &iter2);
-				dbus_message_iter_get_basic(&iter2, &key);
-
-				if (g_str_equal(key, "Address") == TRUE) {
-					dbus_message_iter_next(&iter2);
-					dbus_message_iter_recurse(&iter2, &iter3);
-					dbus_message_iter_get_basic(&iter3, &value);
-
-					if(netconfig_default_connection_info.ipaddress != NULL) {
-						g_free(netconfig_default_connection_info.ipaddress);
-						netconfig_default_connection_info.ipaddress = NULL;
+				if (g_strcmp0(key2, "Servers") == 0) {
+					if (!g_variant_is_of_type(variant2, G_VARIANT_TYPE_STRING_ARRAY)) {
+						g_free(key2);
+						g_variant_unref(variant2);
+						break;
 					}
-					netconfig_default_connection_info.ipaddress = g_strdup(value);
-				}
 
-				dbus_message_iter_next(&iter1);
-			}
-		} else if (g_str_equal(key, "IPv6") == TRUE) {
-			dbus_message_iter_next(&entry);
-			dbus_message_iter_recurse(&entry, &variant);
-			dbus_message_iter_recurse(&variant, &iter1);
-
-			while (dbus_message_iter_get_arg_type(&iter1)
-					== DBUS_TYPE_DICT_ENTRY) {
-				dbus_message_iter_recurse(&iter1, &iter2);
-				dbus_message_iter_get_basic(&iter2, &key);
-
-				if (g_str_equal(key, "Address") == TRUE) {
-					dbus_message_iter_next(&iter2);
-					dbus_message_iter_recurse(&iter2, &iter3);
-					dbus_message_iter_get_basic(&iter3, &value);
-
-					/* TODO: support IPv6
-					netconfig_default_connection_info.ipaddress = g_strdup(value);
-					 */
-				}
-
-				dbus_message_iter_next(&iter1);
-			}
-		} else if (g_str_equal(key, "Proxy") == TRUE) {
-			dbus_message_iter_next(&entry);
-			dbus_message_iter_recurse(&entry, &variant);
-			dbus_message_iter_recurse(&variant, &iter1);
-
-			while (dbus_message_iter_get_arg_type(&iter1)
-					== DBUS_TYPE_DICT_ENTRY) {
-				DBusMessageIter iter4;
-
-				dbus_message_iter_recurse(&iter1, &iter2);
-				dbus_message_iter_get_basic(&iter2, &key);
-
-				if (g_str_equal(key, "Servers") == TRUE) {
-					dbus_message_iter_next(&iter2);
-					dbus_message_iter_recurse(&iter2, &iter3);
-					if (dbus_message_iter_get_arg_type(&iter3)
-							!= DBUS_TYPE_ARRAY)
-						break;
-
-					dbus_message_iter_recurse(&iter3, &iter4);
-					if (dbus_message_iter_get_arg_type(&iter4)
-							!= DBUS_TYPE_STRING)
-						break;
-
-					dbus_message_iter_get_basic(&iter4, &value);
-					if (value != NULL && (strlen(value) > 0)) {
-						if(netconfig_default_connection_info.proxy != NULL) {
-							g_free(netconfig_default_connection_info.proxy);
-							netconfig_default_connection_info.proxy = NULL;
-						}
+					g_variant_get(variant2, "as", &iter_sub);
+					g_variant_iter_loop(iter_sub, "s", &value);
+					g_variant_iter_free(iter_sub);
+					if (value != NULL && (strlen(value) > 0))
 						netconfig_default_connection_info.proxy = g_strdup(value);
+				} else if (g_strcmp0(key2, "Method") == 0) {
+					if (g_variant_is_of_type(variant2, G_VARIANT_TYPE_STRING)) {
+						g_free(key2);
+						g_variant_unref(variant2);
+						break;
 					}
 
-				} else if (g_str_equal(key, "Method") == TRUE) {
-					dbus_message_iter_next(&iter2);
-					dbus_message_iter_recurse(&iter2, &iter3);
-					if (dbus_message_iter_get_arg_type(&iter3)
-							!= DBUS_TYPE_STRING)
-						break;
-
-					dbus_message_iter_get_basic(&iter3, &value);
+					value = g_variant_get_string(variant2, NULL);
 					if (g_strcmp0(value, "direct") == 0) {
 						g_free(netconfig_default_connection_info.proxy);
 						netconfig_default_connection_info.proxy = NULL;
 
+						g_free(key2);
+						g_variant_unref(variant2);
 						break;
 					}
 				}
-
-				dbus_message_iter_next(&iter1);
+			}
+		} else if (g_strcmp0(key, "Frequency") == 0) {
+			if (g_variant_is_of_type(next, G_VARIANT_TYPE_UINT16)) {
+				freq = g_variant_get_uint16(next);
+				netconfig_default_connection_info.freq = freq;
 			}
 		}
-
-		dbus_message_iter_next(&array);
 	}
 
 done:
-	if (message != NULL)
-		dbus_message_unref(message);
+	if (message)
+		g_variant_unref(message);
+
+	if (iter)
+		g_variant_iter_free (iter);
+
+	if (iter1)
+		g_variant_iter_free (iter1);
+
+	return;
 }
 
 static void __netconfig_adjust_tcp_buffer_size(void)
@@ -465,10 +292,18 @@ static void __netconfig_adjust_tcp_buffer_size(void)
 		rmax_size = NET_TCP_BUFFERSIZE_WIFI_RMEM_MAX;
 		wmax_size = NET_TCP_BUFFERSIZE_WIFI_WMEM_MAX;
 	} else if (netconfig_is_cellular_profile(profile) == TRUE) {
+		TapiHandle *tapi_handle = NULL;
 		int telephony_svctype = 0, telephony_pstype = 0;
 
-		vconf_get_int(VCONFKEY_TELEPHONY_SVCTYPE, &telephony_svctype);
-		vconf_get_int(VCONFKEY_TELEPHONY_PSTYPE, &telephony_pstype);
+		tapi_handle = (TapiHandle *)netconfig_tel_init();
+		if (NULL != tapi_handle) {
+			tel_get_property_int(tapi_handle,
+					TAPI_PROP_NETWORK_SERVICE_TYPE,
+					&telephony_svctype);
+			tel_get_property_int(tapi_handle, TAPI_PROP_NETWORK_PS_TYPE,
+					&telephony_pstype);
+			netconfig_tel_deinit();
+		}
 
 		DBG("Default cellular %d, %d", telephony_svctype, telephony_pstype);
 
@@ -485,6 +320,12 @@ static void __netconfig_adjust_tcp_buffer_size(void)
 			rbuf_size = NET_TCP_BUFFERSIZE_HSDPA_READ;
 			wbuf_size = NET_TCP_BUFFERSIZE_HSDPA_WRITE;
 			break;
+#if !defined TIZEN_WEARABLE
+		case VCONFKEY_TELEPHONY_PSTYPE_HSPAP:
+			rbuf_size = NET_TCP_BUFFERSIZE_HSPAP_READ;
+			wbuf_size = NET_TCP_BUFFERSIZE_HSPAP_WRITE;
+			break;
+#endif
 		default:
 			switch (telephony_svctype) {
 			case VCONFKEY_TELEPHONY_SVCTYPE_LTE:
@@ -571,9 +412,11 @@ static void __netconfig_update_default_connection_info(void)
 	int old_network_status = 0;
 	const char *profile = netconfig_get_default_profile();
 	const char *ip_addr = netconfig_get_default_ipaddress();
+	const char *ip_addr6 = netconfig_get_default_ipaddress6();
 	const char *proxy_addr = netconfig_get_default_proxy();
+	unsigned int freq = netconfig_get_default_frequency();
 
-	if (netconfig_emulator_is_emulated() == TRUE)
+	if (emulator_is_emulated() == TRUE)
 		return;
 
 	if (profile == NULL)
@@ -590,28 +433,51 @@ static void __netconfig_update_default_connection_info(void)
 		netconfig_set_vconf_str(VCONFKEY_NETWORK_PROXY, "");
 
 		netconfig_set_vconf_int(VCONFKEY_NETWORK_CONFIGURATION_CHANGE_IND, 0);
+		netconfig_set_vconf_int("memory/private/wifi/frequency", 0);
 
 		DBG("Successfully clear IP and PROXY up");
-	} else if (profile != NULL) {
+
+		/* Disable clatd if it is in running state */
+		netconfig_clatd_disable();
+	}
+	else if (profile != NULL) {
 		char *old_ip = vconf_get_str(VCONFKEY_NETWORK_IP);
 		char *old_proxy = vconf_get_str(VCONFKEY_NETWORK_PROXY);
 
-		if (netconfig_is_wifi_profile(profile) == TRUE)
+		if (netconfig_is_wifi_profile(profile) == TRUE) {
 			netconfig_set_vconf_int(VCONFKEY_NETWORK_STATUS, VCONFKEY_NETWORK_WIFI);
-		else if (netconfig_is_cellular_profile(profile) == TRUE)
-			netconfig_set_vconf_int(VCONFKEY_NETWORK_STATUS, VCONFKEY_NETWORK_CELLULAR);
-		else if (netconfig_is_ethernet_profile(profile) == TRUE)
-			netconfig_set_vconf_int(VCONFKEY_NETWORK_STATUS, VCONFKEY_NETWORK_ETHERNET);
-		else if (netconfig_is_bluetooth_profile(profile) == TRUE)
-			netconfig_set_vconf_int(VCONFKEY_NETWORK_STATUS, VCONFKEY_NETWORK_BLUETOOTH);
-		else
-			netconfig_set_vconf_int(VCONFKEY_NETWORK_STATUS, VCONFKEY_NETWORK_OFF);
+			netconfig_set_vconf_int("memory/private/wifi/frequency", freq);
+		}
+		else if (netconfig_is_cellular_profile(profile) ){
 
-		if (g_strcmp0(old_ip, ip_addr) != 0) {
-			if (ip_addr == NULL)
-				netconfig_set_vconf_str(VCONFKEY_NETWORK_IP, "");
-			else
+			if( !netconfig_is_cellular_internet_profile(profile)){
+				DBG("connection is not a internet profile - stop to update the cellular state");
+				return;
+			}
+
+			netconfig_set_vconf_int(VCONFKEY_NETWORK_STATUS, VCONFKEY_NETWORK_CELLULAR);
+
+			/* Enable clatd if IPv6 is set and no IPv4 address */
+			if (!ip_addr && ip_addr6 )
+				netconfig_clatd_enable();
+		}
+		else if (netconfig_is_ethernet_profile(profile) == TRUE){
+			netconfig_set_vconf_int(VCONFKEY_NETWORK_STATUS, VCONFKEY_NETWORK_ETHERNET);
+		}
+		else if (netconfig_is_bluetooth_profile(profile) == TRUE){
+			netconfig_set_vconf_int(VCONFKEY_NETWORK_STATUS, VCONFKEY_NETWORK_BLUETOOTH);
+		}
+		else{
+			netconfig_set_vconf_int(VCONFKEY_NETWORK_STATUS, VCONFKEY_NETWORK_OFF);
+		}
+
+		if (g_strcmp0(old_ip, ip_addr) != 0 || old_ip == NULL) {
+			if (ip_addr != NULL)
 				netconfig_set_vconf_str(VCONFKEY_NETWORK_IP, ip_addr);
+			else if (ip_addr6 != NULL)
+				netconfig_set_vconf_str(VCONFKEY_NETWORK_IP, ip_addr6);
+			else
+				netconfig_set_vconf_str(VCONFKEY_NETWORK_IP, "");
 		}
 		g_free(old_ip);
 
@@ -626,6 +492,10 @@ static void __netconfig_update_default_connection_info(void)
 		netconfig_set_vconf_int(VCONFKEY_NETWORK_CONFIGURATION_CHANGE_IND, 1);
 
 		DBG("Successfully update default network configuration");
+
+		/* Disable clatd if it is in running state */
+		if (netconfig_is_cellular_profile(profile) != TRUE)
+			netconfig_clatd_disable();
 	}
 
 	__netconfig_adjust_tcp_buffer_size();
@@ -634,8 +504,10 @@ static void __netconfig_update_default_connection_info(void)
 static gboolean __netconfig_is_tech_state_connected(void)
 {
 	gboolean ret = FALSE;
-	DBusMessage *message;
-	DBusMessageIter iter, array;
+	GVariant *message = NULL, *variant;
+	GVariantIter *iter, *next;
+	gchar *path;
+	gchar *key;
 
 	message = netconfig_invoke_dbus_method(CONNMAN_SERVICE,
 			CONNMAN_MANAGER_PATH, CONNMAN_MANAGER_INTERFACE,
@@ -646,94 +518,55 @@ static gboolean __netconfig_is_tech_state_connected(void)
 		return FALSE;
 	}
 
-	if (!dbus_message_iter_init(message, &iter)) {
-		DBG("Message does not have parameters");
-		goto done;
-	}
-
-	dbus_message_iter_recurse(&iter, &array);
-
-	while (dbus_message_iter_get_arg_type(&array) == DBUS_TYPE_STRUCT) {
-		DBusMessageIter entry, dict;
-		char *path = NULL;
-
-		dbus_message_iter_recurse(&array, &entry);
-		dbus_message_iter_get_basic(&entry, &path);
-
+	g_variant_get(message, "(a(oa{sv}))", &iter);
+	while (g_variant_iter_loop(iter, "(oa{sv})", &path, &next)) {
 		if (path == NULL) {
-			dbus_message_iter_next(&array);
 			continue;
 		}
 
-		dbus_message_iter_next(&entry);
-		dbus_message_iter_recurse(&entry, &dict);
-
-		while (dbus_message_iter_get_arg_type(&dict) == DBUS_TYPE_DICT_ENTRY) {
-			DBusMessageIter entry1, value1;
-			const char *key;
-			dbus_bool_t data;
-
-			dbus_message_iter_recurse(&dict, &entry1);
-			dbus_message_iter_get_basic(&entry1, &key);
-
-			if (0 == g_strcmp0(key, "Connected")) {
-				dbus_message_iter_next(&entry1);
-				dbus_message_iter_recurse(&entry1, &value1);
-
-				if (dbus_message_iter_get_arg_type(&value1) ==
-						DBUS_TYPE_BOOLEAN) {
-					dbus_message_iter_get_basic(&value1, &data);
-					DBG("%s [%s: %s]", path, key, data ? "True" : "False");
-
-					if (TRUE == data) {
-						ret = TRUE;
-						goto done;
-					}
+		while (g_variant_iter_loop(next, "{sv}", &key, &variant)) {
+			gboolean data;
+			if (g_strcmp0(key, "Connected") == 0) {
+				data = g_variant_get_boolean(variant);
+				DBG("%s [%s: %s]", path, key, data ? "True" : "False");
+				if (TRUE == data) {
+					ret = TRUE;
+					g_free(path);
+					g_free(key);
+					g_variant_unref(variant);
+					g_variant_iter_free(next);
+					goto done;
 				}
 			}
-			dbus_message_iter_next(&dict);
 		}
-
-		dbus_message_iter_next(&array);
 	}
 
 done:
-	if (message != NULL)
-		dbus_message_unref(message);
+	g_variant_iter_free(iter);
+	g_variant_unref(message);
 
 	return ret;
 }
 
 static void __netconfig_update_if_service_connected(void)
 {
-	DBusMessage *message;
-	DBusMessageIter iter, array;
+	GVariant *message = NULL, *var;
+	GVariantIter *iter, *next;
+	gchar *path;
+	gchar *key;
 
 	message = netconfig_invoke_dbus_method(CONNMAN_SERVICE,
 			CONNMAN_MANAGER_PATH, CONNMAN_MANAGER_INTERFACE,
 			"GetServices", NULL);
 
 	if (message == NULL) {
-		DBG("Fail to get services");
+		ERR("Failed to get services");
 		return;
 	}
 
-	if (!dbus_message_iter_init(message, &iter)) {
-		DBG("Message does not have parameters");
-		goto done;
-	}
-
-	dbus_message_iter_recurse(&iter, &array);
-
-	while (dbus_message_iter_get_arg_type(&array) == DBUS_TYPE_STRUCT) {
-		DBusMessageIter entry, dict;
-		char *path = NULL;
-
-		dbus_message_iter_recurse(&array, &entry);
-		dbus_message_iter_get_basic(&entry, &path);
-
+	g_variant_get(message, "(a(oa{sv}))", &iter);
+	while (g_variant_iter_loop(iter, "(oa{sv})", &path, &next)) {
 		if (path == NULL) {
-			dbus_message_iter_next(&array);
 			continue;
 		}
 
@@ -742,7 +575,6 @@ static void __netconfig_update_if_service_connected(void)
 			if (g_strrstr(path + strlen(CONNMAN_WIFI_SERVICE_PROFILE_PREFIX),
 							"hidden") != NULL) {
 				/* skip hidden profiles */
-				dbus_message_iter_next(&array);
 				continue;
 			}
 			/* Process this */
@@ -750,49 +582,77 @@ static void __netconfig_update_if_service_connected(void)
 						CONNMAN_CELLULAR_SERVICE_PROFILE_PREFIX) == TRUE) {
 			/* Process this */
 		} else {
-			dbus_message_iter_next(&array);
 			continue;
 		}
 
-		dbus_message_iter_next(&entry);
-		dbus_message_iter_recurse(&entry, &dict);
+		while (g_variant_iter_loop(next, "{sv}", &key, &var)) {
+			if (g_strcmp0(key, "State") == 0) {
+				const gchar *sdata = NULL;
+				sdata = g_variant_get_string(var, NULL);
+				DBG("%s [%s: %s]", path, key, sdata);
 
-		while (dbus_message_iter_get_arg_type(&dict) == DBUS_TYPE_DICT_ENTRY) {
-			DBusMessageIter entry1, value1;
-			const char *key, *sdata;
+				if (g_strcmp0(sdata, "online") == 0 || g_strcmp0(sdata, "ready") == 0) {
 
-			dbus_message_iter_recurse(&dict, &entry1);
-			dbus_message_iter_get_basic(&entry1, &key);
-
-			if (0 == g_strcmp0(key, "State")) {
-				dbus_message_iter_next(&entry1);
-				dbus_message_iter_recurse(&entry1, &value1);
-
-				if (dbus_message_iter_get_arg_type(&value1) ==
-						DBUS_TYPE_STRING) {
-					dbus_message_iter_get_basic(&value1, &sdata);
-					DBG("%s [%s: %s]", path, key, sdata);
-
-					if (0 == g_strcmp0(sdata, "online") ||
-							0 == g_strcmp0(sdata, "ready")) {
-
-						/* Found a connected WiFi / 3G service.
-						 * Lets update the default profile info.
-						 */
-						netconfig_update_default_profile(path);
-						goto done;
-					}
+					/* Found a connected WiFi / 3G service.
+					 * Lets update the default profile info.
+					 */
+					netconfig_update_default_profile((const gchar*)path);
+					g_free(key);
+					g_free(path);
+					g_variant_unref(var);
+					g_variant_iter_free(next);
+					goto done;
 				}
 			}
-			dbus_message_iter_next(&dict);
 		}
+	}
+done:
+	g_variant_iter_free(iter);
+	g_variant_unref(message);
 
-		dbus_message_iter_next(&array);
+	return;
+}
+
+static void __netconfig_network_notify_result(const char *sig_name, const char *key)
+{
+	gboolean reply;
+	GVariantBuilder *builder = NULL;
+	GDBusConnection *connection = NULL;
+	GError *error = NULL;
+	const char *prop_key = "key";
+
+	INFO("[Signal] %s %s", sig_name, key);
+
+	connection = netdbus_get_connection();
+	if (connection == NULL) {
+		ERR("Failed to get GDBus Connection");
+		return;
 	}
 
-done:
-	if (message != NULL)
-		dbus_message_unref(message);
+	builder = g_variant_builder_new(G_VARIANT_TYPE ("a{sv}"));
+	g_variant_builder_add(builder, "{sv}", prop_key, g_variant_new("(s)", key));
+
+	reply = g_dbus_connection_emit_signal(connection,
+			NULL,
+			NETCONFIG_NETWORK_PATH,
+			NETCONFIG_NETWORK_INTERFACE,
+			sig_name,
+			g_variant_builder_end(builder),
+			&error);
+
+	if (builder)
+		g_variant_builder_unref(builder);
+
+	if (reply != TRUE) {
+		if (error != NULL) {
+			ERR("Failed to send signal [%s]", error->message);
+			g_error_free(error);
+		}
+		return;
+	}
+
+	INFO("Sent signal (%s), key (%s)", sig_name, key);
+	return;
 }
 
 const char *netconfig_get_default_profile(void)
@@ -810,9 +670,19 @@ const char *netconfig_get_default_ipaddress(void)
 	return netconfig_default_connection_info.ipaddress;
 }
 
+const char *netconfig_get_default_ipaddress6(void)
+{
+	return netconfig_default_connection_info.ipaddress6;
+}
+
 const char *netconfig_get_default_proxy(void)
 {
 	return netconfig_default_connection_info.proxy;
+}
+
+unsigned int netconfig_get_default_frequency(void)
+{
+	return netconfig_default_connection_info.freq;
 }
 
 const char *netconfig_wifi_get_connected_essid(const char *default_profile)
@@ -823,8 +693,7 @@ const char *netconfig_wifi_get_connected_essid(const char *default_profile)
 	if (netconfig_is_wifi_profile(default_profile) != TRUE)
 		return NULL;
 
-	if (g_str_equal(default_profile, netconfig_default_connection_info.profile)
-			!= TRUE)
+	if (g_strcmp0(default_profile, netconfig_default_connection_info.profile) != 0)
 		return NULL;
 
 	return netconfig_default_connection_info.essid;
@@ -876,7 +745,6 @@ static int __netconfig_reset_ipv4_socket(void)
 
 void netconfig_update_default_profile(const char *profile)
 {
-	char *default_profile = NULL;
 	static char *old_profile = NULL;
 
 	/* It's automatically updated by signal-handler
@@ -884,9 +752,10 @@ void netconfig_update_default_profile(const char *profile)
 	 *
 	 * It is going to update default connection information
 	 */
+
 	if (netconfig_default_connection_info.profile != NULL) {
-		if (netconfig_is_wifi_profile(
-				netconfig_default_connection_info.profile) == TRUE)
+
+		if (netconfig_is_wifi_profile(netconfig_default_connection_info.profile))
 			__netconfig_reset_ipv4_socket();
 
 		g_free(old_profile);
@@ -901,30 +770,40 @@ void netconfig_update_default_profile(const char *profile)
 		g_free(netconfig_default_connection_info.ipaddress);
 		netconfig_default_connection_info.ipaddress = NULL;
 
+		g_free(netconfig_default_connection_info.ipaddress6);
+		netconfig_default_connection_info.ipaddress6 = NULL;
+
 		g_free(netconfig_default_connection_info.proxy);
 		netconfig_default_connection_info.proxy = NULL;
 
-		if (netconfig_wifi_state_get_service_state()
-				!= NETCONFIG_WIFI_CONNECTED) {
+		netconfig_default_connection_info.freq = 0;
+
+		if (wifi_state_get_service_state() != NETCONFIG_WIFI_CONNECTED) {
 			g_free(netconfig_default_connection_info.essid);
 			netconfig_default_connection_info.essid = NULL;
 		}
 	}
 
-	if (profile == NULL) {
-		default_profile = __netconfig_get_default_profile();
-		if (default_profile == NULL) {
+	//default profile is NULL and new connected profile is NULL
+	if( !profile ){
+		profile = __netconfig_get_default_profile();
+
+		if (profile && netconfig_is_cellular_profile(profile) &&
+			!netconfig_is_cellular_internet_profile(profile)){
+			DBG("not a default cellular profile");
+			profile = NULL;
+		}
+
+		if(!profile){
 			__netconfig_update_default_connection_info();
 			return;
 		}
-		netconfig_default_connection_info.profile = default_profile;
-	} else
-		netconfig_default_connection_info.profile = g_strdup(profile);
+	}
 
-	__netconfig_get_default_connection_info(
-			netconfig_default_connection_info.profile);
-
+	netconfig_default_connection_info.profile = g_strdup(profile);
+	__netconfig_get_default_connection_info(profile);
 	__netconfig_update_default_connection_info();
+
 }
 
 void netconfig_update_default(void)
@@ -935,11 +814,14 @@ void netconfig_update_default(void)
 		__netconfig_adjust_tcp_buffer_size();
 }
 
-char *netconfig_network_get_ifname(const char *profile)
+char *netconfig_get_ifname(const char *profile)
 {
-	DBusMessage *message = NULL;
-	DBusMessageIter iter, array;
-	char *ifname = NULL;
+	GVariant *message = NULL, *variant;
+	GVariantIter *iter, *next;
+	gchar *key;
+	gchar *key1;
+	const gchar *value = NULL;
+	gchar *ifname = NULL;
 
 	if (profile == NULL)
 		return NULL;
@@ -951,65 +833,44 @@ char *netconfig_network_get_ifname(const char *profile)
 		return NULL;
 	}
 
-	if (dbus_message_get_type(message) == DBUS_MESSAGE_TYPE_ERROR) {
-		const char *ptr = dbus_message_get_error_name(message);
-		ERR("Error!!! Error message received [%s]", ptr);
-		goto done;
-	}
-
-	dbus_message_iter_init(message, &iter);
-	dbus_message_iter_recurse(&iter, &array);
-
-	while (dbus_message_iter_get_arg_type(&array) == DBUS_TYPE_DICT_ENTRY) {
-		DBusMessageIter entry, variant, iter1, iter2, iter3;
-		const char *key = NULL;
-
-		dbus_message_iter_recurse(&array, &entry);
-		dbus_message_iter_get_basic(&entry, &key);
-
-		if (g_str_equal(key, "Ethernet") == TRUE) {
-			dbus_message_iter_next(&entry);
-			dbus_message_iter_recurse(&entry, &variant);
-			dbus_message_iter_recurse(&variant, &iter1);
-
-			while (dbus_message_iter_get_arg_type(&iter1)
-					== DBUS_TYPE_DICT_ENTRY) {
-				const char *value;
-
-				dbus_message_iter_recurse(&iter1, &iter2);
-				dbus_message_iter_get_basic(&iter2, &key);
-
-				if (g_str_equal(key, "Interface") == TRUE) {
-					dbus_message_iter_next(&iter2);
-					dbus_message_iter_recurse(&iter2, &iter3);
-					dbus_message_iter_get_basic(&iter3, &value);
-
+	g_variant_get(message, "(a{sv})", &iter);
+	while (g_variant_iter_loop(iter, "{sv}", &key, &next)) {
+		if (g_strcmp0(key, "Ethernet") == 0) {
+			while (g_variant_iter_loop(next, "{sv}", &key1, &variant)) {
+				if (g_strcmp0(key1, "Interface") == 0) {
+					value = g_variant_get_string(variant, NULL);
 					ifname = g_strdup(value);
 				}
-				dbus_message_iter_next(&iter1);
 			}
 		}
-		dbus_message_iter_next(&array);
 	}
 
-done:
-	if (message != NULL)
-		dbus_message_unref(message);
+	g_variant_unref(message);
+
+	g_variant_iter_free(iter);
 
 	return ifname;
 }
 
-gboolean netconfig_iface_network_state_add_route(
-		NetconfigNetworkState *master,
-		gchar *ip_addr, gchar *netmask,
-		gchar *interface, gchar *gateway, gint32 address_family, gboolean *result, GError **error)
+/* Check Ethernet Cable Plug-in /Plug-out Status */
+void netconfig_network_notify_ethernet_cable_state(const char *key)
 {
-	const char *path = ROUTE_EXEC_PATH;
-	char *const args[] = { "/sbin/route", "add", "-net", ip_addr,
+       __netconfig_network_notify_result("EthernetCableState", key);
+}
+
+static gboolean handle_add_route(
+		Network *object,
+		GDBusMethodInvocation *context,
+		gchar *ip_addr,
+		gchar *netmask,
+		gchar *interface,  gchar *gateway, gint address_family)
+{
+	const gchar *path = ROUTE_EXEC_PATH;
+	gchar *const args[] = { "/sbin/route", "add", "-net", ip_addr,
 		"netmask", netmask, "dev", interface, NULL };
-	char *const envs[] = { NULL };
-	const char* buf = NULL;
-	char* ch = NULL;
+	gchar *const envs[] = { NULL };
+	const gchar* buf = NULL;
+	gchar* ch = NULL;
 	int prefix_len = 0;
 	int pos = 0;
 
@@ -1019,22 +880,21 @@ gboolean netconfig_iface_network_state_add_route(
 		case AF_INET:
 			if (ip_addr == NULL || netmask == NULL || interface == NULL) {
 				ERR("Invalid parameter");
-				netconfig_error_invalid_parameter(error);
-				*result = FALSE;
+				netconfig_error_invalid_parameter(context);
 				return FALSE;
 			}
+
 			if (netconfig_execute_file(path, args, envs) < 0) {
 				DBG("Failed to add a new route");
-				netconfig_error_permission_denied(error);
-				*result = FALSE;
+				netconfig_error_permission_denied(context);
 				return FALSE;
 			}
+
 			break;
 		case AF_INET6:
 			if (ip_addr == NULL || interface == NULL || gateway == NULL) {
 				ERR("Invalid parameter");
-				netconfig_error_invalid_parameter(error);
-				*result = FALSE;
+				netconfig_error_invalid_parameter(context);
 				return FALSE;
 			}
 
@@ -1050,30 +910,30 @@ gboolean netconfig_iface_network_state_add_route(
 
 			if (netconfig_add_route_ipv6(ip_addr, interface, gateway, prefix_len) < 0) {
 				DBG("Failed to add a new route");
-				netconfig_error_permission_denied(error);
-				*result = FALSE;
+				netconfig_error_permission_denied(context);
 				return FALSE;
 			}
 			break;
 		default:
 			DBG("Unknown Address Family");
-			netconfig_error_invalid_parameter(error);
-			*result = FALSE;
+			netconfig_error_invalid_parameter(context);
 			return FALSE;
 	}
 
 	DBG("Successfully added a new route");
-	*result = TRUE;
+	network_complete_add_route(object, context, TRUE);
 	return TRUE;
 }
 
-gboolean netconfig_iface_network_state_remove_route(
-		NetconfigNetworkState *master,
-		gchar *ip_addr, gchar *netmask,
-		gchar *interface, gchar *gateway, gint32 address_family, gboolean *result, GError **error)
+static gboolean handle_remove_route(
+		Network *object,
+		GDBusMethodInvocation *context,
+		gchar *ip_addr,
+		gchar *netmask,
+		gchar *interface, gchar *gateway, gint address_family)
 {
 	const char *path = ROUTE_EXEC_PATH;
-	char *const args[] = { "/sbin/route", "del", "-net", ip_addr,
+	gchar *const args[] = { "/sbin/route", "del", "-net", ip_addr,
 		"netmask", netmask, "dev", interface, NULL };
 	char *const envs[] = { NULL };
 	const char* buf = NULL;
@@ -1087,22 +947,19 @@ gboolean netconfig_iface_network_state_remove_route(
 		case AF_INET:
 			if (ip_addr == NULL || netmask == NULL || interface == NULL) {
 				DBG("Invalid parameter!");
-				netconfig_error_invalid_parameter(error);
-				*result = FALSE;
+				netconfig_error_invalid_parameter(context);
 				return FALSE;
 			}
 			if (netconfig_execute_file(path, args, envs) < 0) {
 				DBG("Failed to remove the route");
-				netconfig_error_permission_denied(error);
-				*result = FALSE;
+				netconfig_error_permission_denied(context);
 				return FALSE;
 			}
 			break;
 		case AF_INET6:
 			if (ip_addr == NULL || interface == NULL || gateway == NULL) {
 				DBG("Invalid parameter!");
-				netconfig_error_invalid_parameter(error);
-				*result = FALSE;
+				netconfig_error_invalid_parameter(context);
 				return FALSE;
 			}
 
@@ -1118,45 +975,82 @@ gboolean netconfig_iface_network_state_remove_route(
 
 			if (netconfig_del_route_ipv6(ip_addr, interface, gateway, prefix_len) < 0) {
 				DBG("Failed to remove the route");
-				netconfig_error_permission_denied(error);
-				*result = FALSE;
+				netconfig_error_permission_denied(context);
 				return FALSE;
 			}
 			break;
 		default:
 			DBG("Unknown Address Family");
-			netconfig_error_invalid_parameter(error);
-			*result = FALSE;
+			netconfig_error_invalid_parameter(context);
 			return FALSE;
 	}
 
 	DBG("Successfully removed the route");
-	*result = TRUE;
-
+	network_complete_remove_route(object, context, TRUE);
 	return TRUE;
 }
 
-gpointer netconfig_network_state_create_and_init(DBusGConnection *connection)
+static gboolean handle_check_get_privilege(Network *object,
+		GDBusMethodInvocation *context)
 {
-	GObject *object;
-
-	g_return_val_if_fail(connection != NULL, NULL);
-
-	object = g_object_new(NETCONFIG_TYPE_NETWORK_STATE, "connection",
-			connection, "path", NETCONFIG_NETWORK_STATE_PATH, NULL);
-
-	dbus_g_connection_register_g_object(connection,
-									NETCONFIG_NETWORK_STATE_PATH, object);
-
-	return object;
+	network_complete_check_get_privilege(object, context);
+	return TRUE;
 }
 
-gboolean netconfig_iface_network_state_check_get_privilege()
+
+static gboolean handle_check_profile_privilege(Network *object,
+		GDBusMethodInvocation *context)
 {
-		return TRUE;
+	network_complete_check_profile_privilege(object, context);
+	return TRUE;
 }
 
-gboolean netconfig_iface_network_state_check_profile_privilege()
+gboolean netconfig_iface_network_state_ethernet_cable_state(gint32 *state)
 {
-		return TRUE;
+       int ret = 0;
+
+       ret = netconfig_get_ethernet_cable_state(state);
+       if(ret != 0) {
+               DBG("Failed to get ethernet cable state");
+               return FALSE;
+       }
+
+       DBG("Successfully get ethernet cable state[%d]", state);
+       return TRUE;
+}
+
+void state_object_create_and_init(void)
+{
+	DBG("Creating network state object");
+	GDBusInterfaceSkeleton *interface_network = NULL;
+	GDBusConnection *connection = NULL;
+	GDBusObjectManagerServer *server = netdbus_get_state_manager();
+	if (server == NULL)
+		return;
+
+	connection = netdbus_get_connection();
+	g_dbus_object_manager_server_set_connection(server, connection);
+
+	/*Interface netconfig.network*/
+	netconfigstate = network_skeleton_new();
+
+	interface_network = G_DBUS_INTERFACE_SKELETON(netconfigstate);
+	g_signal_connect(netconfigstate, "handle-add-route",
+				G_CALLBACK(handle_add_route), NULL);
+	g_signal_connect(netconfigstate, "handle-check-get-privilege",
+				G_CALLBACK(handle_check_get_privilege), NULL);
+	g_signal_connect(netconfigstate, "handle-check-profile-privilege",
+				G_CALLBACK(handle_check_profile_privilege), NULL);
+	g_signal_connect(netconfigstate, "handle-remove-route",
+				G_CALLBACK(handle_remove_route), NULL);
+
+	if (!g_dbus_interface_skeleton_export(interface_network, connection,
+			NETCONFIG_NETWORK_STATE_PATH, NULL)) {
+		ERR("Export with path failed");
+	}
+}
+
+void state_object_deinit(void)
+{
+	g_object_unref(netconfigstate);
 }

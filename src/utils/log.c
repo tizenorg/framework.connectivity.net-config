@@ -18,7 +18,7 @@
  */
 
 #include <glib.h>
-#include <time.h>
+#include <sys/time.h>
 #include <stdio.h>
 #include <stdarg.h>
 #include <unistd.h>
@@ -74,18 +74,20 @@ static inline void __netconfig_log_make_backup(void)
 
 static inline void __netconfig_log_get_local_time(char *strtime, const int size)
 {
-	time_t buf;
+	struct timeval tv;
 	struct tm *local_ptm;
+	char buf[32];
 
-	time(&buf);
-	buf = time(NULL);
-	local_ptm = localtime(&buf);
+	gettimeofday(&tv, NULL);
+	local_ptm = localtime(&tv.tv_sec);
 
-	if(local_ptm != NULL)
-		strftime(strtime, size, "%m/%d %H:%M:%S", local_ptm);
+	if(local_ptm)
+		strftime(buf, sizeof(buf), "%m/%d %H:%M:%S", local_ptm);
+
+	snprintf(strtime, size, "%s.%03ld", buf, tv.tv_usec / 1000);
 }
 
-void __netconfig_debug(const char *format, ...)
+void netconfig_log(const char *format, ...)
 {
 	va_list ap;
 	int log_size = 0;
@@ -124,4 +126,13 @@ void __netconfig_debug(const char *format, ...)
 		fprintf(log_file, "%s %s", strtime, str);
 
 	va_end(ap);
+}
+
+void log_cleanup(void)
+{
+	if (log_file == NULL)
+		return;
+
+	fclose(log_file);
+	log_file = NULL;
 }

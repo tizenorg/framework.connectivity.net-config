@@ -27,7 +27,9 @@
 #include "netdbus.h"
 #include "wifi-agent.h"
 #include "wifi-state.h"
+#include "wifi-config.h"
 #include "wifi-eap-config.h"
+#include "neterror.h"
 
 #define CONNMAN_CONFIG_FIELD_TYPE			"Type"
 #define CONNMAN_CONFIG_FIELD_NAME			"Name"
@@ -40,6 +42,7 @@
 #define CONNMAN_CONFIG_FIELD_CLIENT_CERT_FILE		"ClientCertFile"
 #define CONNMAN_CONFIG_FIELD_PVT_KEY_FILE			"PrivateKeyFile"
 #define CONNMAN_CONFIG_FIELD_PVT_KEY_PASSPHRASE		"PrivateKeyPassphrase"
+#define CONNMAN_CONFIG_FIELD_KEYMGMT_TYPE			"KeymgmtType"
 
 static char *__get_encoded_ssid(const char *name)
 {
@@ -214,27 +217,33 @@ static gboolean __netconfig_copy_config(const char *src, const char *dst)
 	return result;
 }
 
-static gboolean __netconfig_create_config(GHashTable *fields)
+static gboolean __netconfig_create_config(GVariant *fields)
 {
 	GKeyFile *keyfile = NULL;
-	GHashTableIter iter;
+	GVariantIter *iter;
 	gchar *encoded_ssid = NULL;
 	gchar *dirname = NULL;
 	gchar *group_name = NULL;
-	gpointer field, value;
+	gchar *field, *value;
 	gboolean updated = FALSE;
 	gchar *cert_file = NULL;
 	gchar *cert_path = NULL;
 	int err = 0;
 
-	g_hash_table_iter_init(&iter, fields);
-	while (g_hash_table_iter_next(&iter, &field, &value)) {
+	g_variant_get(fields, "a{ss}", &iter);
+	while (g_variant_iter_loop(iter, "{ss}", &field, &value)) {
 		if (value != NULL) {
 			if (g_strcmp0(field, CONNMAN_CONFIG_FIELD_NAME) == 0) {
-				encoded_ssid = __get_encoded_ssid((const char *)value);
+				encoded_ssid = __get_encoded_ssid(value);
+
+				g_free(value);
+				g_free(field);
 				break;
 			} else if (g_strcmp0(field, CONNMAN_CONFIG_FIELD_SSID) == 0) {
-				encoded_ssid = g_strdup((const char *)value);
+				encoded_ssid = g_strdup(value);
+
+				g_free(field);
+				g_free(value);
 				break;
 			}
 		}
@@ -258,11 +267,14 @@ static gboolean __netconfig_create_config(GHashTable *fields)
 		goto out;
 	}
 
-	g_hash_table_iter_init(&iter, fields);
-	while (g_hash_table_iter_next(&iter, &field, &value)) {
+	g_variant_iter_free(iter);
+
+	g_variant_get(fields, "a{ss}", &iter);
+	while (g_variant_iter_loop(iter, "{ss}", &field, &value)) {
 		if (g_strcmp0(field, CONNMAN_CONFIG_FIELD_SSID) == 0 ||
 				g_strcmp0(field, CONNMAN_CONFIG_FIELD_EAP_METHOD) == 0 ||
-				g_strcmp0(field, CONNMAN_CONFIG_FIELD_PHASE2) == 0) {
+				g_strcmp0(field, CONNMAN_CONFIG_FIELD_PHASE2) ||
+				g_strcmp0(field, CONNMAN_CONFIG_FIELD_KEYMGMT_TYPE) == 0) {
 			DBG("field: %s, value: %s", field, value);
 
 			if (value != NULL)
@@ -314,8 +326,7 @@ static gboolean __netconfig_create_config(GHashTable *fields)
 				g_free(cert_path);
 			}
 		} else {
-			//DBG("field: %s, value:", field);
-			DBG("Temporal field: %s, value: %s", field, value);
+			DBG("field: %s, value: %s", field, value);
 
 			if (value != NULL)
 				g_key_file_set_string(keyfile, group_name, field, value);
@@ -331,13 +342,45 @@ static gboolean __netconfig_create_config(GHashTable *fields)
 	}
 
 out:
-	if (keyfile != NULL)
+	if (keyfile)
 		g_key_file_free(keyfile);
+
+	g_variant_iter_free(iter);
+
+	if (field)
+		g_free(field);
+
+	if (value)
+		g_free(value);
 
 	g_free(group_name);
 	g_free(encoded_ssid);
 
 	return updated;
+}
+
+static gboolean _delete_configuration(const gchar *profile)
+{
+	gboolean ret = FALSE;
+	gchar *config_id = NULL;
+
+	ret = wifi_config_get_config_id(profile, &config_id);
+	if (ret != TRUE) {
+		ERR("Fail to get config_id from [%s]", profile);
+		return ret;
+	}
+	ERR("get config_id [%s] from [%s]", config_id, profile);
+
+	ret = wifi_config_remove_configuration(config_id);
+	if (ret != TRUE) {
+		ERR("Fail to wifi_config_remove_configuration [%s]", config_id);
+	}
+
+	if (config_id != NULL) {
+		g_free(config_id);
+	}
+
+	return ret;
 }
 
 static gboolean __netconfig_delete_config(const char *profile)
@@ -352,6 +395,10 @@ static gboolean __netconfig_delete_config(const char *profile)
 	if (NULL == profile) {
 		ERR("Invalid profile name");
 		return FALSE;
+	}
+
+	if (_delete_configuration(profile) != TRUE) {
+		ERR("Fail to delete configuration [%s]", profile);
 	}
 
 	wifi_ident = strstr(profile, "wifi_");
@@ -392,20 +439,20 @@ static gboolean __netconfig_delete_config(const char *profile)
 }
 
 static void __netconfig_eap_state(
-		enum netconfig_wifi_service_state state, void *user_data);
+		wifi_service_state_e state, void *user_data);
 
-static struct netconfig_wifi_state_notifier netconfig_eap_notifier = {
-		.netconfig_wifi_state_changed = __netconfig_eap_state,
+static wifi_state_notifier netconfig_eap_notifier = {
+		.wifi_state_changed = __netconfig_eap_state,
 		.user_data = NULL,
 };
 
 static void __netconfig_eap_state(
-		enum netconfig_wifi_service_state state, void *user_data)
+		wifi_service_state_e state, void *user_data)
 {
 	const char *wifi_profile = (const char *)user_data;
 
 	if (wifi_profile == NULL) {
-		netconfig_wifi_state_notifier_unregister(&netconfig_eap_notifier);
+		wifi_state_notifier_unregister(&netconfig_eap_notifier);
 		return;
 	}
 
@@ -418,46 +465,39 @@ static void __netconfig_eap_state(
 	g_free(netconfig_eap_notifier.user_data);
 	netconfig_eap_notifier.user_data = NULL;
 
-	netconfig_wifi_state_notifier_unregister(&netconfig_eap_notifier);
+	wifi_state_notifier_unregister(&netconfig_eap_notifier);
 }
 
-gboolean netconfig_iface_wifi_create_config(NetconfigWifi *wifi,
-		gchar *service, GHashTable *fields,
-		DBusGMethodInvocation *context)
+gboolean handle_create_eap_config(Wifi *wifi, GDBusMethodInvocation *context,
+		const gchar *service, GVariant *fields)
 {
-	GError *error;
 	gboolean updated = FALSE;
 	gboolean reply = FALSE;
+	gboolean result = FALSE;
 
 	g_return_val_if_fail(wifi != NULL, FALSE);
 
 	DBG("Set agent fields for %s", service);
 
 	if (netconfig_is_wifi_profile(service) != TRUE) {
-		error = g_error_new(DBUS_GERROR,
-				DBUS_GERROR_AUTH_FAILED,
-				CONNMAN_ERROR_INTERFACE ".InvalidService");
-
-		dbus_g_method_return_error(context, error);
-		g_clear_error(&error);
-
+		netconfig_error_dbus_method_return(context, NETCONFIG_ERROR_WRONG_PROFILE, "InvalidService");
 		return reply;
 	}
 
 	updated = __netconfig_create_config(fields);
 	if (updated == TRUE) {
-		dbus_g_method_return(context);
+		wifi_complete_create_eap_config(wifi, context);
 
 		if (g_strstr_len(service, strlen(service), "_hidden_") != NULL) {
-			GHashTableIter iter;
-			gpointer field, value;
+			GVariantIter *iter;
+			char *field, *value;
 			const char *name = NULL;
 			const char *identity = NULL;
 			const char *passphrase = NULL;
 
-			g_hash_table_iter_init(&iter, fields);
+			g_variant_get(fields, "a{ss}", &iter);
 
-			while (g_hash_table_iter_next(&iter, &field, &value)) {
+			while (g_variant_iter_loop(iter, "{ss}", &field, &value)) {
 				if (g_strcmp0(field, CONNMAN_CONFIG_FIELD_NAME) == 0)
 					name = (const char *)value;
 				else if (g_strcmp0(field, CONNMAN_CONFIG_FIELD_SSID) == 0)
@@ -470,42 +510,42 @@ gboolean netconfig_iface_wifi_create_config(NetconfigWifi *wifi,
 
 			netconfig_wifi_set_agent_field_for_eap_network(
 									name, identity, passphrase);
+
+			g_variant_iter_free(iter);
 		}
 
-		reply = netconfig_invoke_dbus_method_nonblock(CONNMAN_SERVICE,
+		result = netconfig_invoke_dbus_method_nonblock(CONNMAN_SERVICE,
 				service, CONNMAN_SERVICE_INTERFACE, "Connect", NULL, NULL);
 
 		if (netconfig_eap_notifier.user_data != NULL) {
 			g_free(netconfig_eap_notifier.user_data);
 			netconfig_eap_notifier.user_data = NULL;
 
-			netconfig_wifi_state_notifier_unregister(&netconfig_eap_notifier);
+			wifi_state_notifier_unregister(&netconfig_eap_notifier);
 		}
 
 		netconfig_eap_notifier.user_data = g_strdup(service);
-		netconfig_wifi_state_notifier_register(&netconfig_eap_notifier);
+		wifi_state_notifier_register(&netconfig_eap_notifier);
 	} else {
-		error = g_error_new(DBUS_GERROR,
-				DBUS_GERROR_AUTH_FAILED,
-				CONNMAN_ERROR_INTERFACE ".InvalidArguments");
-
-		dbus_g_method_return_error(context, error);
-		g_clear_error(&error);
+		netconfig_error_dbus_method_return(context, NETCONFIG_ERROR_INVALID_PARAMETER, "InvalidArguments");
 	}
 
-	if (reply != TRUE)
+	if (result != TRUE)
 		ERR("Fail to connect %s", service);
+	else
+		reply = TRUE;
 
 	return reply;
 }
 
-gboolean netconfig_iface_wifi_delete_config(NetconfigWifi *wifi,
-		gchar *profile,
-		DBusGMethodInvocation *context)
+gboolean handle_delete_eap_config(Wifi *wifi, GDBusMethodInvocation *context,
+		const gchar *profile)
 {
 	g_return_val_if_fail(wifi != NULL, FALSE);
 
-	dbus_g_method_return(context);
+	wifi_complete_delete_eap_config(wifi, context);
 
-	return __netconfig_delete_config((const char *)profile);
+	gboolean ret = __netconfig_delete_config((const char *)profile);
+
+	return ret;
 }

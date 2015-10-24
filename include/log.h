@@ -29,21 +29,23 @@ extern "C" {
 
 #define NETCONFIG_DEBUG_FILE (1)
 
-void __netconfig_debug(const char *format, ...);
+#define NETCONFIG_TAG		"NETCONFIG"
+
+void		netconfig_log(const char *format, ...);
+void		log_cleanup(void);
 
 #define __LOG(level, format, arg...) \
 	do { \
 		if (NETCONFIG_DEBUG_FILE) { \
-			__netconfig_debug("%s "format"\n", __FUNCTION__, ## arg); \
-		} else { \
-			SLOG(level, PACKAGE, "%s "format"\n", __FUNCTION__, ## arg); \
+			netconfig_log("%s(%d) "format"\n", __FUNCTION__, __LINE__,  ## arg); \
 		} \
+		SLOG(level, NETCONFIG_TAG, format, ## arg); \
 	} while(0)
 
-#define DBG(format, arg...)		__LOG(LOG_DEBUG, format, ## arg)
+#define DBG(format, arg...)	__LOG(LOG_DEBUG, format, ## arg)
 #define INFO(format, arg...)	__LOG(LOG_INFO, format, ## arg)
 #define WARN(format, arg...)	__LOG(LOG_WARN, format, ## arg)
-#define ERR(format, arg...)		__LOG(LOG_ERROR, format, ## arg)
+#define ERR(format, arg...)	__LOG(LOG_ERROR, format, ## arg)
 
 #ifdef __cplusplus
 }

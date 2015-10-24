@@ -26,12 +26,10 @@ extern "C" {
 
 #include "wifi.h"
 
-gboolean netconfig_iface_wifi_create_config(NetconfigWifi *wifi,
-		gchar *service, GHashTable *fields,
-		DBusGMethodInvocation *context);
-gboolean netconfig_iface_wifi_delete_config(NetconfigWifi *wifi,
-		gchar *profile,
-		DBusGMethodInvocation *context);
+gboolean handle_create_eap_config(Wifi *wifi, GDBusMethodInvocation *context,
+		const gchar *service, GVariant *fields);
+gboolean handle_delete_eap_config(Wifi *wifi, GDBusMethodInvocation *context,
+		const gchar *profile);
 
 #ifdef __cplusplus
 }

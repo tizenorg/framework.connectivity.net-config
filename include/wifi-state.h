@@ -25,59 +25,57 @@ extern "C" {
 #endif
 
 #include <glib.h>
-#include <dbus/dbus.h>
 
-enum netconfig_wifi_service_state {
+typedef enum {
 	NETCONFIG_WIFI_UNKNOWN		= 0x00,
 	NETCONFIG_WIFI_IDLE			= 0x01,
 	NETCONFIG_WIFI_ASSOCIATION	= 0x02,
 	NETCONFIG_WIFI_CONFIGURATION	= 0x03,
 	NETCONFIG_WIFI_CONNECTED	= 0x04,
 	NETCONFIG_WIFI_FAILURE		= 0x05,
-};
+} wifi_service_state_e;
 
-enum netconfig_wifi_tech_state {
-	NETCONFIG_WIFI_TECH_UNKNOWN			= 0x00,
+typedef enum {
+	NETCONFIG_WIFI_TECH_UNKNOWN		= 0x00,
 	NETCONFIG_WIFI_TECH_OFF				= 0x01,
 	NETCONFIG_WIFI_TECH_WPS_ONLY		= 0x02,
 	NETCONFIG_WIFI_TECH_POWERED			= 0x03,
 	NETCONFIG_WIFI_TECH_CONNECTED		= 0x04,
 	NETCONFIG_WIFI_TECH_TETHERED		= 0x05,
-};
+} wifi_tech_state_e;
 
-struct netconfig_wifi_state_notifier {
-	void (*netconfig_wifi_state_changed)
-		(enum netconfig_wifi_service_state, void *user_data);
+typedef struct {
+	void (*wifi_state_changed)(wifi_service_state_e, void *user_data);
 	void *user_data;
-};
+} wifi_state_notifier;
 
 #define VCONF_WIFI_LAST_POWER_STATE "file/private/wifi/last_power_state"
 
-void netconfig_wifi_set_bss_found(const gboolean found);
-gboolean netconfig_wifi_is_bss_found(void);
-void netconfig_wifi_state_set_service_state(
-		enum netconfig_wifi_service_state new_state);
-enum netconfig_wifi_service_state
-		netconfig_wifi_state_get_service_state(void);
+void					wifi_state_update_power_state(gboolean powered);
+void					wifi_state_emit_power_completed(gboolean power_on);
+void					wifi_state_emit_power_failed(void);
 
-void netconfig_wifi_state_set_technology_state(
-		enum netconfig_wifi_tech_state new_state);
-enum netconfig_wifi_tech_state
-	netconfig_wifi_state_get_technology_state(void);
+char 					*wifi_get_favorite_service(void);
+void					wifi_start_timer_network_notification(void);
 
-void netconfig_wifi_notify_power_failed(void);
-void netconfig_wifi_notify_power_completed(gboolean power_on);
-void netconfig_wifi_update_power_state(gboolean powered);
+void					wifi_state_notifier_register(wifi_state_notifier *notifier);
+void					wifi_state_notifier_unregister(wifi_state_notifier *notifier);
+void					wifi_state_notifier_cleanup(void);
 
-char *netconfig_wifi_get_favorite_service(void);
+void					wifi_state_set_bss_found(gboolean found);
+gboolean				wifi_state_is_bss_found(void);
 
-void netconfig_wifi_start_timer_network_notification(void);
+void					wifi_state_set_service_state(wifi_service_state_e new_state);
+wifi_service_state_e	wifi_state_get_service_state(void);
 
-void netconfig_wifi_state_notifier_cleanup(void);
-void netconfig_wifi_state_notifier_register(
-		struct netconfig_wifi_state_notifier *notifier);
-void netconfig_wifi_state_notifier_unregister(
-		struct netconfig_wifi_state_notifier *notifier);
+void					wifi_state_set_tech_state(wifi_tech_state_e new_state);
+wifi_tech_state_e		wifi_state_get_technology_state(void);
+
+void					wifi_state_set_connected_essid(void);
+void					wifi_state_get_connected_essid(gchar **essid);
+
+gboolean				handle_get_wifi_state(Wifi *wifi, GDBusMethodInvocation *context);
+
 
 #ifdef __cplusplus
 }
